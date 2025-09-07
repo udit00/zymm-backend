@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"os"
 	"zymm/internal/api"
+	"zymm/internal/db"
 
 	"github.com/joho/godotenv"
 )
@@ -33,7 +34,10 @@ func main() {
 	 ex: http://localhost:10000/api/
 	*/
 
-	mux.HandleFunc("/health", api.TestHandler)
+	db.InitDB()
+
+	api.UserHandlerDelegate(mux)
+	api.AuthHandlerDelegate(mux)
 
 	log.Println("🚀 Server running on http://localhost:" + port)
 	err := http.ListenAndServe(":"+port, mux)
