@@ -1,23 +1,59 @@
 package api
 
 import (
+	"database/sql"
 	"encoding/json"
+	"log"
 	"net/http"
+	"zymm/internal/config"
+	"zymm/internal/db"
+	"zymm/internal/models"
 )
 
+const authApiVersion = "v1"
+const authApiPrefix = "auth"
+
+func authRouteAppended(newRoute string) string {
+	return config.AppName + "/" + authApiVersion + "/" + authApiPrefix + "/" + newRoute
+}
+
 func AuthHandlerDelegate(mux *http.ServeMux) {
-	mux.HandleFunc("/authHandler1", _AuthHandler)
-	mux.HandleFunc("/authHandler2", _AuthHandler2)
+	mux.HandleFunc(authRouteAppended("login"), loginHandler)
 }
 
-func _AuthHandler(w http.ResponseWriter, r *http.Request) {
-	response := map[string]string{"status": "Test 1"}
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
-}
+func loginHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
 
-func _AuthHandler2(w http.ResponseWriter, r *http.Request) {
-	response := map[string]string{"status": "Test 2"}
+	// Decode JSON body
+	var req models.LoginRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request payload", http.StatusBadRequest)
+		return
+	}
+
+	// Check user in DB
+	var dbPassword string
+	err := db.DB.QueryRow("SELECT password FROM users WHERE email = @p1", req.Email).Scan(&dbPassword)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			http.Error(w, "Invalid credentials", http.StatusUnauthorized)
+			return
+		}
+		log.Printf("❌ DB error: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	// Simple password check (❗ replace with hashing later)
+	if req.Password != dbPassword {
+		http.Error(w, "Invalid credentials", http.StatusUnauthorized)
+		return
+	}
+
+	// Success
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	json.NewEncoder(w).Encode(map[string]string{"message": "✅ Login successful"})
 }
