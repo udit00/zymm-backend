@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"os"
 	"zymm/internal/api"
+	"zymm/internal/business/auth"
 	"zymm/internal/db"
 
 	"github.com/joho/godotenv"
@@ -43,5 +44,12 @@ func main() {
 	err := http.ListenAndServe(":"+port, mux)
 	if err != nil {
 		log.Fatalf("Server failed: %v", err)
+	}
+
+	pass, err := auth.HashPasswordArgon2id("Password@123*")
+	if err != nil {
+		log.Println("Error generating password hash: ", err)
+	} else {
+		log.Println("Password will be - " + pass)
 	}
 }

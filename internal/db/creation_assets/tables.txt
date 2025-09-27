@@ -1,0 +1,51 @@
+
+CREATE TABLE users(
+	userId  	int primary key	IDENTITY(1,1) NOT NULL,
+	userName 	varchar(100) NOT NULL,
+	userPass 	varchar(50) NOT NULL,
+	gender 		CHAR(1) NOT NULL CHECK (gender IN ('M', 'F')),
+	mobile 		varchar(15) NOT NULL,
+	email 		varchar(100),
+	profilePic	text,
+	createdAt	datetime NOT NULL DEFAULT GETDATE(),
+	updatedAt	datetime,
+	roleId		int FOREIGN KEY REFERENCES roles(roleId) NOT NULL
+)
+
+CREATE TABLE roles(
+	roleId 			int primary key	IDENTITY(1,1) NOT NULL,
+	roleName 		varchar(10) NOT NULL,
+	roleDescription varchar(255),
+	createdAt		datetime NOT NULL DEFAULT GETDATE(),
+	updatedAt		datetime
+)
+
+INSERT INTO roles (roleName, roleDescription) VALUES 
+('owner', 'Owner of the Gym'),
+('manager', 'Manager of the gym with almost all of the rights ( less than owner )'),
+('staff', 'Staff of the gym with limited rights ( less than manager ), usually under a manager'),
+('trainer', 'Trainer of the gym with limited rights, client management and scheduling'),
+('member', 'Regular gym member with access to facilities');
+
+create table gym(
+	gymId       	int primary key IDENTITY(1,1) NOT NULL,
+	gymName     	varchar(200) NOT NULL,
+	state 	 		varchar(100) NOT NULL,
+	city 	 		varchar(100) NOT NULL,
+	gymAddress  	varchar(255) NOT NULL,
+	contactNo   	varchar(15) NOT NULL,
+	officialEmail   varchar(100),
+	createdBy		int FOREIGN KEY REFERENCES users(userId) NOT NULL,
+	createdAt   	datetime NOT NULL DEFAULT GETDATE(),
+	updatedAt   	datetime,
+	locationLat	    varchar(15),
+	locationLong    varchar(15),
+)
+
+insert into users (userName, userPass, gender, mobile, roleId) values 
+('Udit Nair', 'p*********', 'M', '7011490*3*', 1)
+
+insert into gym (gymName, state, city, gymAddress, contactNo, officialEmail, createdBy) values 
+('Testing Gym', 'Delhi', 'New Delhi', '123 Fitness St, Gyan Mandir Road, New Delhi - 110044', '7011490*3*', 'TestingGym1@gmail.com', 1)
+
+select * from roles;
