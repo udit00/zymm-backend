@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"zymm/internal/config"
 	"zymm/internal/models"
 	"zymm/utils"
 )
@@ -13,7 +12,7 @@ const userApiVersion = "v1"
 const userApiPrefix = "user"
 
 func userRouteAppended(newRoute string) string {
-	return "/" + config.AppName + "/" + userApiVersion + "/" + userApiPrefix + "/" + newRoute
+	return utils.ApiRoute(userApiVersion, userApiPrefix, newRoute)
 }
 
 func UserHandlerDelegate(mux *http.ServeMux) {

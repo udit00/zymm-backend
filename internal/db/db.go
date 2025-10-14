@@ -22,7 +22,7 @@ func InitDB() {
 		log.Fatal("❌ Database environment variables not set")
 	}
 
-	connString := fmt.Sprintf("sqlserver://%s:%s@%s:%s?database=%s",
+	connString := fmt.Sprintf("sqlserver://%s:%s@%s:%s?database=%s&encrypt=true&trustservercertificate=true",
 		user, pass, host, port, name)
 
 	var err error

@@ -1,10 +1,10 @@
 package models
 
 type LoginRequestModel struct {
-	Email      string `json:"email"`
-	Password   string `json:"password"`
-	AppVersion string `json:"app_version"`
-	Platform   string `json:"platform"`
+	EmailOrMobile string `json:"email_or_mobile"`
+	Password      string `json:"password"`
+	AppVersion    string `json:"app_version"`
+	Platform      string `json:"platform"`
 }
 
 type LoginResponseModel struct {
