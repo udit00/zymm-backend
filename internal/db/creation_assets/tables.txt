@@ -1,16 +1,64 @@
+------------------------------------
 
-CREATE TABLE users(
-	userId  	int primary key	IDENTITY(1,1) NOT NULL,
-	userName 	varchar(100) NOT NULL,
-	userPass 	varchar(50) NOT NULL,
-	gender 		CHAR(1) NOT NULL CHECK (gender IN ('M', 'F')),
-	mobile 		varchar(15) NOT NULL,
-	email 		varchar(100),
-	profilePic	text,
-	createdAt	datetime NOT NULL DEFAULT GETDATE(),
-	updatedAt	datetime,
-	roleId		int FOREIGN KEY REFERENCES roles(roleId) NOT NULL
-)
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[users](
+	[userId] [int] IDENTITY(1,1) NOT NULL,
+	[userName] [varchar](100) NOT NULL,
+	[userPass] [varchar](255) NOT NULL,
+	[gender] [char](1) NOT NULL,
+	[mobile] [varchar](15) NOT NULL,
+	[email] [varchar](100) NULL,
+	[profilePic] [text] NULL,
+	[createdAt] [datetime] NOT NULL,
+	[updatedAt] [datetime] NULL,
+	[roleId] [int] NOT NULL
+) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+GO
+ALTER TABLE [dbo].[users] ADD PRIMARY KEY CLUSTERED 
+(
+	[userId] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, SORT_IN_TEMPDB = OFF, IGNORE_DUP_KEY = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+GO
+ALTER TABLE [dbo].[users] ADD  DEFAULT (getdate()) FOR [createdAt]
+GO
+ALTER TABLE [dbo].[users]  WITH CHECK ADD FOREIGN KEY([roleId])
+REFERENCES [dbo].[roles] ([roleId])
+GO
+ALTER TABLE [dbo].[users]  WITH CHECK ADD CHECK  (([gender]='F' OR [gender]='M' OR [gender]='O'))
+GO
+
+--------------------------------------
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[registrationLogs](
+	[userId] [int] NOT NULL,
+	[userName] [varchar](100) NOT NULL,
+	[userPass] [varchar](255) NOT NULL,
+	[gender] [char](1) NOT NULL,
+	[mobile] [varchar](15) NOT NULL,
+	[email] [varchar](100) NULL,
+	[profilePic] [text] NULL,
+	[roleId] [int] NOT NULL,
+	[appVersion] [varchar](20) NULL,
+	[appPlatform] [varchar](20) NULL,
+	[createdAt] [datetime] NOT NULL
+) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+GO
+ALTER TABLE [dbo].[registrationLogs] ADD PRIMARY KEY CLUSTERED 
+(
+	[userId] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, SORT_IN_TEMPDB = OFF, IGNORE_DUP_KEY = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+GO
+ALTER TABLE [dbo].[registrationLogs] ADD  DEFAULT (getdate()) FOR [createdAt]
+GO
+
+--------------------------------------
 
 CREATE TABLE roles(
 	roleId 			int primary key	IDENTITY(1,1) NOT NULL,

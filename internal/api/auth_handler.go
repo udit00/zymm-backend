@@ -6,9 +6,10 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"zymm/internal/business/auth"
+	bussinessAuth "zymm/internal/business/auth"
 	"zymm/internal/db"
 	"zymm/internal/models"
+	authRepo "zymm/internal/repository/auth_repo"
 	"zymm/utils"
 )
 
@@ -39,7 +40,7 @@ func SendErrorResponse(writer http.ResponseWriter, status int, errMsg string) {
 
 func AuthHandlerDelegate(mux *http.ServeMux) {
 	mux.HandleFunc(authRouteAppended("login"), loginHandler)
-	mux.HandleFunc(authRouteAppended("register"), registerHandler)
+	mux.HandleFunc(authRouteAppended("registration"), registerHandler)
 }
 
 func loginHandler(w http.ResponseWriter, r *http.Request) {
@@ -69,7 +70,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	isPassSame, passMatchError := auth.ComparePasswordArgon2id(dbPassword, req.Password)
+	isPassSame, passMatchError := bussinessAuth.ComparePasswordArgon2id(dbPassword, req.Password)
 	if passMatchError != nil {
 		SendErrorResponse(w, http.StatusUnauthorized, "Invalid credentials: pass: "+req.Password+" was wrong, correct Pass is "+dbPassword)
 		return
@@ -83,13 +84,69 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func registerHandler(w http.ResponseWriter, r *http.Request) {
-	pass, pErr := auth.HashPasswordArgon2id("Password@123*")
-	if pErr != nil {
-		log.Println("Error generating password hash: ", pErr)
-	} else {
-		log.Println("Password will be - " + pass)
+	if r.Method != http.MethodPost {
+		SendErrorResponse(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
 	}
-	// Success
+
+	// Decode JSON body
+	var req models.RegistrationApiRequestModel
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		SendErrorResponse(w, http.StatusBadRequest, "Invalid request payload")
+		return
+	}
+
+	// Basic validation
+	if req.DisplayName == "" || req.Mobile == "" || req.Password == "" || req.Gender == "" {
+		SendErrorResponse(w, http.StatusBadRequest, "Missing required fields")
+		return
+	}
+
+	insertedUserRecord, userInsertionError := authRepo.InsertRegistrationRecord(models.UserRecord{
+		DisplayPic: req.DisplayPic,
+		UserName:   req.DisplayName,
+		Mobile:     req.Mobile,
+		Email:      req.Email,
+		UserPass:   req.Password,
+		UserId:     0,
+		Gender:     req.Gender,
+		ProfilePic: req.DisplayPic,
+		RoleId:     5, // Default role ID for regular users
+	})
+
+	if userInsertionError != nil {
+		SendErrorResponse(w, http.StatusInternalServerError, "Error creating user: "+userInsertionError.Error())
+		return
+	}
+
+	var regLog models.RegistrationLogsRecord = models.RegistrationLogsRecord{
+		UserId:      insertedUserRecord.UserId,
+		UserName:    insertedUserRecord.UserName,
+		UserPass:    insertedUserRecord.UserPass,
+		Gender:      insertedUserRecord.Gender,
+		Mobile:      insertedUserRecord.Mobile,
+		Email:       insertedUserRecord.Email,
+		ProfilePic:  insertedUserRecord.ProfilePic,
+		RoleId:      insertedUserRecord.RoleId,
+		AppVersion:  req.AppVersion,
+		AppPlatform: req.AppPlatform,
+	}
+
+	registrationLogInsertionError := authRepo.InsertRegistrationLog(regLog)
+
+	if registrationLogInsertionError != nil {
+		SendErrorResponse(w, http.StatusInternalServerError, "Error logging registration: "+registrationLogInsertionError.Error())
+		return
+	}
+
+	// Insert user into DB and get new userId
+
+	resp := models.RegistrationApiResponseModel{
+		UserId:     insertedUserRecord.UserId,
+		UserName:   insertedUserRecord.UserName,
+		Registered: true,
+		Message:    "✅ Registration successful for " + insertedUserRecord.UserName,
+	}
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{"message": "✅ Registration successful for " + pass})
+	json.NewEncoder(w).Encode(resp)
 }
