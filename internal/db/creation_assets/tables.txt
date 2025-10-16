@@ -75,20 +75,40 @@ INSERT INTO roles (roleName, roleDescription) VALUES
 ('trainer', 'Trainer of the gym with limited rights, client management and scheduling'),
 ('member', 'Regular gym member with access to facilities');
 
-create table gym(
-	gymId       	int primary key IDENTITY(1,1) NOT NULL,
-	gymName     	varchar(200) NOT NULL,
-	state 	 		varchar(100) NOT NULL,
-	city 	 		varchar(100) NOT NULL,
-	gymAddress  	varchar(255) NOT NULL,
-	contactNo   	varchar(15) NOT NULL,
-	officialEmail   varchar(100),
-	createdBy		int FOREIGN KEY REFERENCES users(userId) NOT NULL,
-	createdAt   	datetime NOT NULL DEFAULT GETDATE(),
-	updatedAt   	datetime,
-	locationLat	    varchar(15),
-	locationLong    varchar(15),
-)
+--------------
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[gym](
+	[gymId] [int] IDENTITY(1,1) NOT NULL,
+	[gymName] [varchar](200) NOT NULL,
+	[state] [varchar](100) NOT NULL,
+	[city] [varchar](100) NOT NULL,
+	[gymAddress] [varchar](255) NOT NULL,
+	[contactNo] [varchar](15) NOT NULL,
+	[officialEmail] [varchar](100) NULL,
+	[createdBy] [int] NOT NULL,
+	[createdAt] [datetime] NOT NULL,
+	[updatedAt] [datetime] NULL,
+	[locationLat] [varchar](15) NULL,
+	[locationLong] [varchar](15) NULL
+) ON [PRIMARY]
+GO
+ALTER TABLE [dbo].[gym] ADD PRIMARY KEY CLUSTERED 
+(
+	[gymId] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, SORT_IN_TEMPDB = OFF, IGNORE_DUP_KEY = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+GO
+ALTER TABLE [dbo].[gym] ADD  DEFAULT (getdate()) FOR [createdAt]
+GO
+ALTER TABLE [dbo].[gym]  WITH CHECK ADD FOREIGN KEY([createdBy])
+REFERENCES [dbo].[users] ([userId])
+GO
+
+
+--------------
 
 insert into users (userName, userPass, gender, mobile, roleId) values 
 ('Udit Nair', 'p*********', 'M', '7011490*3*', 1)

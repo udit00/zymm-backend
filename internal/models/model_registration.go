@@ -28,6 +28,26 @@ type RegistrationApiRequestModel struct {
 	AppPlatform string  `json:"appPlatform"`
 }
 
+type RegistrationOwnerApiRequestModel struct {
+	DisplayPic         *string `json:"displayPic"`
+	DisplayName        string  `json:"displayName"`
+	Mobile             string  `json:"mobile"`
+	OwnerPersonalEmail *string `json:"ownerPersonalEmail"`
+	Password           string  `json:"password"`
+	Gender             string  `json:"gender"`
+	AppVersion         string  `json:"appVersion"`
+	AppPlatform        string  `json:"appPlatform"`
+
+	GymName       string `json:"gymName"`
+	State         string `json:"state"`
+	City          string `json:"city"`
+	GymAddress    string `json:"gymAddress"`
+	ContactNo     string `json:"gymOfficialContactNo"`
+	OfficialEmail string `json:"gymOfficialEmail"`
+	LocationLat   string `json:"gymOfficialLocationLat"`
+	LocationLong  string `json:"gymOfficialLocationLong"`
+}
+
 // RegistrationResponseModel represents the response after successful registration
 type RegistrationApiResponseModel struct {
 	UserId     int    `json:"userId"`

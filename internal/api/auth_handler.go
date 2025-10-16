@@ -7,6 +7,7 @@ import (
 	bussinessAuth "zymm/internal/business/auth"
 	"zymm/internal/db"
 	"zymm/internal/models"
+	gymModels "zymm/internal/models/gym_models"
 	authRepo "zymm/internal/repository/auth_repo"
 	LogService "zymm/internal/service/log_service"
 	"zymm/utils"
@@ -22,6 +23,7 @@ func authRouteAppended(newRoute string) string {
 func AuthHandlerDelegate(mux *http.ServeMux) {
 	mux.HandleFunc(authRouteAppended("login"), loginHandler)
 	mux.HandleFunc(authRouteAppended("registration"), registerHandler)
+	mux.HandleFunc(authRouteAppended("ownerRegistration"), ownerRegistrationHandler)
 }
 
 func loginHandler(w http.ResponseWriter, r *http.Request) {
@@ -119,14 +121,96 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 		utils.SendErrorResponse(w, http.StatusInternalServerError, "Error logging registration: "+registrationLogInsertionError.Error())
 		return
 	}
-
-	// Insert user into DB and get new userId
-
 	resp := models.RegistrationApiResponseModel{
 		UserId:     insertedUserRecord.UserId,
 		UserName:   insertedUserRecord.UserName,
 		Registered: true,
 		Message:    "✅ Registration successful for " + insertedUserRecord.UserName,
+	}
+
+	utils.SendSuccessResponse(w, http.StatusOK, resp)
+}
+
+func ownerRegistrationHandler(w http.ResponseWriter, r *http.Request) {
+	LogService.LogMessage("ownerRegistrationHandler was called")
+	if r.Method != http.MethodPost {
+		utils.SendErrorResponse(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+	// Decode JSON body
+	var req models.RegistrationOwnerApiRequestModel
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		utils.SendErrorResponse(w, http.StatusBadRequest, "Invalid request payload")
+		return
+	}
+
+	// Basic validation
+	if req.DisplayName == "" || req.Mobile == "" || req.Password == "" || req.Gender == "" || req.GymName == "" || req.State == "" || req.City == "" || req.GymAddress == "" || req.ContactNo == "" || req.OfficialEmail == "" {
+		utils.SendErrorResponse(w, http.StatusBadRequest, "Missing required fields")
+		return
+	}
+
+	insertedUserRecord, userInsertionError := authRepo.InsertRegistrationRecord(models.UserRecord{
+		DisplayPic: req.DisplayPic,
+		UserName:   req.DisplayName,
+		Mobile:     req.Mobile,
+		Email:      req.OwnerPersonalEmail,
+		UserPass:   req.Password,
+		UserId:     0,
+		Gender:     req.Gender,
+		ProfilePic: req.DisplayPic,
+		RoleId:     5, // Default role ID for regular users
+	})
+
+	if userInsertionError != nil {
+		utils.SendErrorResponse(w, http.StatusInternalServerError, "Error creating user: "+userInsertionError.Error())
+		return
+	}
+
+	var regLog models.RegistrationLogsRecord = models.RegistrationLogsRecord{
+		UserId:      insertedUserRecord.UserId,
+		UserName:    insertedUserRecord.UserName,
+		UserPass:    insertedUserRecord.UserPass,
+		Gender:      insertedUserRecord.Gender,
+		Mobile:      insertedUserRecord.Mobile,
+		Email:       insertedUserRecord.Email,
+		ProfilePic:  insertedUserRecord.ProfilePic,
+		RoleId:      insertedUserRecord.RoleId,
+		AppVersion:  req.AppVersion,
+		AppPlatform: req.AppPlatform,
+	}
+
+	registrationLogInsertionError := authRepo.InsertRegistrationLog(regLog)
+
+	if registrationLogInsertionError != nil {
+		utils.SendErrorResponse(w, http.StatusInternalServerError, "Error logging registration: "+registrationLogInsertionError.Error())
+		return
+	}
+
+	gymRecord := gymModels.GymRecord{
+		GymName:       req.GymName,
+		State:         req.State,
+		City:          req.City,
+		GymAddress:    req.GymAddress,
+		ContactNo:     req.ContactNo,
+		OfficialEmail: req.OfficialEmail,
+		CreatedBy:     insertedUserRecord.UserId,
+		LocationLat:   req.LocationLat,
+		LocationLong:  req.LocationLong,
+	}
+
+	insertedGymRecordId, gymInsertionError := authRepo.InsertGym(db.DB, gymRecord)
+
+	if gymInsertionError != nil {
+		utils.SendErrorResponse(w, http.StatusInternalServerError, "Error creating gym: "+gymInsertionError.Error())
+		return
+	}
+
+	resp := models.RegistrationApiResponseModel{
+		UserId:     insertedUserRecord.UserId,
+		UserName:   insertedUserRecord.UserName,
+		Registered: true,
+		Message:    "✅ Registration successful for " + insertedUserRecord.UserName + " with Gym ID " + string(*insertedGymRecordId),
 	}
 
 	utils.SendSuccessResponse(w, http.StatusOK, resp)

@@ -5,6 +5,7 @@ import (
 	bussinessAuth "zymm/internal/business/auth"
 	"zymm/internal/db"
 	"zymm/internal/models"
+	gymModels "zymm/internal/models/gym_models"
 	LogService "zymm/internal/service/log_service"
 )
 
@@ -76,4 +77,18 @@ func GetUserByUserId(userId int) (*models.UserRecord, error) {
 		return nil, err
 	}
 	return user, nil
+}
+
+func InsertGym(db *sql.DB, gym gymModels.GymRecord) (*int, error) {
+	var gymId *int
+	err := db.QueryRow(`
+		INSERT INTO gym (gymName, state, city, gymAddress, contactNo, officialEmail, createdBy, locationLat, locationLong)
+		OUTPUT INSERTED.gymId
+		VALUES (@p1, @p2, @p3, @p4, @p5, @p6, @p7, @p8, @p9)`,
+		gym.GymName, gym.State, gym.City, gym.GymAddress, gym.ContactNo, gym.OfficialEmail, gym.CreatedBy, gym.LocationLat, gym.LocationLong,
+	).Scan(&gymId)
+	if err != nil {
+		return nil, err
+	}
+	return gymId, nil
 }
