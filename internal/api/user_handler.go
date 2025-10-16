@@ -1,10 +1,9 @@
 package api
 
 import (
-	"encoding/json"
-	"fmt"
 	"net/http"
-	"zymm/internal/models"
+	authRepo "zymm/internal/repository/auth_repo"
+	LogService "zymm/internal/service/log_service"
 	"zymm/utils"
 )
 
@@ -19,23 +18,16 @@ func UserHandlerDelegate(mux *http.ServeMux) {
 	mux.HandleFunc(userRouteAppended("getUserData"), getUserData)
 }
 
-func getDummyDataForUser() models.LoginResponseModel {
-	return models.LoginResponseModel{
-		AuthCheckSum: "egoisaedoignaegt",
-		DisplayName:  "HaXeR-.",
-		LastLoggedIn: utils.GetDbDateTime(),
-	}
-}
-
 func getUserData(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("getUserData was called")
+	LogService.LogMessage("getUserData was called")
 	// Pretend login is successful and build response
-	resp := getDummyDataForUser()
-
-	apiResp := models.APIResponse{
-		Status: 1,
-		Data:   resp,
+	userData, err := authRepo.GetUserByUserId(1)
+	if err != nil {
+		LogService.LogError("❌ Error fetching user data: ", err)
+		utils.SendErrorResponse(w, http.StatusInternalServerError, "Error fetching user data: "+err.Error())
+		return
 	}
+	// utils.SendErrorResponse(w, http.StatusInternalServerError, "Error fetching user data: ", userData)
 
-	json.NewEncoder(w).Encode(apiResp)
+	utils.SendSuccessResponse(w, http.StatusOK, userData)
 }

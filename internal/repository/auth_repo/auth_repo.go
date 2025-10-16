@@ -2,10 +2,10 @@ package authRepo
 
 import (
 	"database/sql"
-	"log"
 	bussinessAuth "zymm/internal/business/auth"
 	"zymm/internal/db"
 	"zymm/internal/models"
+	LogService "zymm/internal/service/log_service"
 )
 
 func InsertRegistrationRecord(record models.UserRecord) (*models.UserRecord, error) {
@@ -13,7 +13,7 @@ func InsertRegistrationRecord(record models.UserRecord) (*models.UserRecord, err
 	// Hash password
 	hashedPass, pErr := bussinessAuth.HashPasswordArgon2id(record.UserPass)
 	if pErr != nil {
-		log.Println("Error generating password hash: ", pErr)
+		LogService.LogError("Error generating password hash: ", pErr)
 		return nil, pErr
 	}
 
@@ -23,7 +23,7 @@ func InsertRegistrationRecord(record models.UserRecord) (*models.UserRecord, err
 		VALUES (@p1, @p2, @p3, @p4, @p5, @p6, @p7)`,
 		record.UserName, hashedPass, record.Gender, record.Mobile, record.Email, record.ProfilePic, 5).Scan(&userId)
 	if err != nil {
-		log.Printf("❌ DB error: %v", err)
+		LogService.LogError("❌ DB error: ", err)
 		return nil, err
 	}
 	record.UserId = userId
@@ -36,7 +36,7 @@ func InsertRegistrationLog(record models.RegistrationLogsRecord) error {
 		VALUES (@p1, @p2, @p3, @p4, @p5, @p6, @p7, @p8, @p9, @p10)`,
 		record.UserId, record.UserName, record.UserPass, record.Gender, record.Mobile, record.Email, record.ProfilePic, record.RoleId, record.AppVersion, record.AppPlatform).Err()
 	if err != nil {
-		log.Printf("❌ DB error: %v", err)
+		LogService.LogError("❌ DB error: ", err)
 		return err
 	}
 	return nil
@@ -45,16 +45,34 @@ func InsertRegistrationLog(record models.RegistrationLogsRecord) error {
 func GetUserByEmailOrMobile(emailOrMobile string) (*models.UserRecord, error) {
 	user := &models.UserRecord{}
 	err := db.DB.QueryRow(`
-		SELECT userId, userName, userPass, gender, mobile, email, profilePic, roleId, createdAt, updatedAt
+		SELECT userId, userName, gender, mobile, email, profilePic, roleId, createdAt, updatedAt
 		FROM users
 		WHERE email = @p1 OR mobile = @p2`,
 		emailOrMobile, emailOrMobile).Scan(
-		&user.UserId, &user.UserName, &user.UserPass, &user.Gender, &user.Mobile, &user.Email, &user.ProfilePic, &user.RoleId, &user.CreatedAt, &user.UpdatedAt)
+		&user.UserId, &user.UserName, &user.Gender, &user.Mobile, &user.Email, &user.ProfilePic, &user.RoleId, &user.CreatedAt, &user.UpdatedAt)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, sql.ErrNoRows
 		}
-		log.Printf("❌ DB error: %v", err)
+		LogService.LogError("❌ DB error: ", err)
+		return nil, err
+	}
+	return user, nil
+}
+
+func GetUserByUserId(userId int) (*models.UserRecord, error) {
+	user := &models.UserRecord{}
+	err := db.DB.QueryRow(`
+		SELECT userId, userName, gender, mobile, email, profilePic, roleId, createdAt, updatedAt
+		FROM users
+		WHERE userId = @p1`,
+		userId).Scan(
+		&user.UserId, &user.UserName, &user.Gender, &user.Mobile, &user.Email, &user.ProfilePic, &user.RoleId, &user.CreatedAt, &user.UpdatedAt)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, sql.ErrNoRows
+		}
+		LogService.LogError("❌ DB error: ", err)
 		return nil, err
 	}
 	return user, nil

@@ -3,13 +3,12 @@ package api
 import (
 	"database/sql"
 	"encoding/json"
-	"fmt"
-	"log"
 	"net/http"
 	bussinessAuth "zymm/internal/business/auth"
 	"zymm/internal/db"
 	"zymm/internal/models"
 	authRepo "zymm/internal/repository/auth_repo"
+	LogService "zymm/internal/service/log_service"
 	"zymm/utils"
 )
 
@@ -20,40 +19,22 @@ func authRouteAppended(newRoute string) string {
 	return utils.ApiRoute(authApiVersion, authApiPrefix, newRoute)
 }
 
-type ErrorResponse struct {
-	Status int    `json:"status"`
-	Error  string `json:"error"`
-}
-
-func GetCommonErrorResponse(status int, errMsg string) ErrorResponse {
-	return ErrorResponse{
-		Status: status,
-		Error:  errMsg,
-	}
-}
-
-func SendErrorResponse(writer http.ResponseWriter, status int, errMsg string) {
-	writer.Header().Set("Content-Type", "application/json")
-	writer.WriteHeader(status)
-	json.NewEncoder(writer).Encode(GetCommonErrorResponse(status, errMsg))
-}
-
 func AuthHandlerDelegate(mux *http.ServeMux) {
 	mux.HandleFunc(authRouteAppended("login"), loginHandler)
 	mux.HandleFunc(authRouteAppended("registration"), registerHandler)
 }
 
 func loginHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("loginHandler was called")
+	LogService.LogMessage("loginHandler was called")
 	if r.Method != http.MethodPost {
-		SendErrorResponse(w, http.StatusMethodNotAllowed, "Method not allowed")
+		utils.SendErrorResponse(w, http.StatusMethodNotAllowed, "Method not allowed")
 		return
 	}
 
 	// Decode JSON body
 	var req models.LoginRequestModel
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		SendErrorResponse(w, http.StatusBadRequest, "Invalid request payload")
+		utils.SendErrorResponse(w, http.StatusBadRequest, "Invalid request payload")
 		return
 	}
 
@@ -62,43 +43,43 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 	err := db.DB.QueryRow("SELECT userPass FROM users WHERE email = @p1 or mobile = @p2", req.EmailOrMobile, req.EmailOrMobile).Scan(&dbPassword)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			SendErrorResponse(w, http.StatusUnauthorized, "Invalid credentials: no user found with email or mobile "+req.EmailOrMobile)
+			utils.SendErrorResponse(w, http.StatusUnauthorized, "Invalid credentials: no user found with email or mobile "+req.EmailOrMobile)
 			return
 		}
-		log.Printf("❌ DB error: %v", err)
-		SendErrorResponse(w, http.StatusInternalServerError, "Internal server error")
+		LogService.LogError("❌ DB error: ", err)
+		utils.SendErrorResponse(w, http.StatusInternalServerError, "Internal server error")
 		return
 	}
 
 	isPassSame, passMatchError := bussinessAuth.ComparePasswordArgon2id(dbPassword, req.Password)
 	if passMatchError != nil {
-		SendErrorResponse(w, http.StatusUnauthorized, "Invalid credentials: pass: "+req.Password+" was wrong, correct Pass is "+dbPassword)
+		utils.SendErrorResponse(w, http.StatusUnauthorized, "Invalid credentials: pass: "+req.Password+" was wrong, correct Pass is "+dbPassword)
 		return
 	} else if !isPassSame {
-		SendErrorResponse(w, http.StatusUnauthorized, "Invalid credentials: pass: "+req.Password+" was wrong, correct Pass is "+dbPassword)
+		utils.SendErrorResponse(w, http.StatusUnauthorized, "Invalid credentials: pass: "+req.Password+" was wrong, correct Pass is "+dbPassword)
 		return
 	}
 	// Success
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{"message": "✅ Login successful for " + req.EmailOrMobile})
+	var data = map[string]string{"message": "✅ Login successful for " + req.EmailOrMobile}
+	utils.SendSuccessResponse(w, http.StatusOK, data)
 }
 
 func registerHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		SendErrorResponse(w, http.StatusMethodNotAllowed, "Method not allowed")
+		utils.SendErrorResponse(w, http.StatusMethodNotAllowed, "Method not allowed")
 		return
 	}
 
 	// Decode JSON body
 	var req models.RegistrationApiRequestModel
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		SendErrorResponse(w, http.StatusBadRequest, "Invalid request payload")
+		utils.SendErrorResponse(w, http.StatusBadRequest, "Invalid request payload")
 		return
 	}
 
 	// Basic validation
 	if req.DisplayName == "" || req.Mobile == "" || req.Password == "" || req.Gender == "" {
-		SendErrorResponse(w, http.StatusBadRequest, "Missing required fields")
+		utils.SendErrorResponse(w, http.StatusBadRequest, "Missing required fields")
 		return
 	}
 
@@ -115,7 +96,7 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 	})
 
 	if userInsertionError != nil {
-		SendErrorResponse(w, http.StatusInternalServerError, "Error creating user: "+userInsertionError.Error())
+		utils.SendErrorResponse(w, http.StatusInternalServerError, "Error creating user: "+userInsertionError.Error())
 		return
 	}
 
@@ -135,7 +116,7 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 	registrationLogInsertionError := authRepo.InsertRegistrationLog(regLog)
 
 	if registrationLogInsertionError != nil {
-		SendErrorResponse(w, http.StatusInternalServerError, "Error logging registration: "+registrationLogInsertionError.Error())
+		utils.SendErrorResponse(w, http.StatusInternalServerError, "Error logging registration: "+registrationLogInsertionError.Error())
 		return
 	}
 
@@ -147,6 +128,6 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 		Registered: true,
 		Message:    "✅ Registration successful for " + insertedUserRecord.UserName,
 	}
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(resp)
+
+	utils.SendSuccessResponse(w, http.StatusOK, resp)
 }
