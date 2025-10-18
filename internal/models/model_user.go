@@ -15,3 +15,13 @@ type UserRecord struct {
 	UpdatedAt  *time.Time
 	RoleId     int
 }
+
+type LoginLogsRecord struct {
+	UserId       int
+	LoginDate    time.Time
+	AppVersion   string
+	UserAgent    string
+	LocationLat  *string
+	LocationLong *string
+	IpAddress    *string
+}

@@ -9,6 +9,37 @@ import (
 	LogService "zymm/internal/service/log_service"
 )
 
+func GetUserDataByEmailOrMobile(emailOrMobile string) (*models.LoginUserDataModel, error) {
+	var userData models.LoginUserDataModel
+	err := db.DB.QueryRow("SELECT userId,userName,userPass FROM users WHERE email = @p1 or mobile = @p2", emailOrMobile, emailOrMobile).Scan(&userData.UserId, &userData.DisplayName, &userData.Password)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, sql.ErrNoRows
+		}
+		LogService.LogError("❌ DB error: ", err)
+		return nil, err
+	}
+	return &userData, nil
+}
+
+func InsertLoginLog(loginLogsModel models.LoginLogsRecord) error {
+	_, err := db.DB.Exec(`INSERT INTO loginLogs (userId, appVersion, userAgent, locationLat, locationLong, ipAddress) VALUES (@p1, @p2, @p3, @p4, @p5, @p6)`, loginLogsModel.UserId, loginLogsModel.AppVersion, loginLogsModel.UserAgent, loginLogsModel.LocationLat, loginLogsModel.LocationLong, loginLogsModel.IpAddress)
+	if err != nil {
+		LogService.LogError("❌ DB error: ", err)
+		return err
+	}
+	return nil
+}
+
+func UpdateLoginAuthToken(userId int, authToken string) error {
+	_, err := db.DB.Exec(`UPDATE users SET authToken = @p1 WHERE userId = @p2`, authToken, userId)
+	if err != nil {
+		LogService.LogError("❌ DB error: ", err)
+		return err
+	}
+	return nil
+}
+
 func InsertRegistrationRecord(record models.UserRecord) (*models.UserRecord, error) {
 	var userId int
 	// Hash password

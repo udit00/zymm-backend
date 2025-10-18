@@ -41,28 +41,50 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Check user in DB
-	var dbPassword string
-	err := db.DB.QueryRow("SELECT userPass FROM users WHERE email = @p1 or mobile = @p2", req.EmailOrMobile, req.EmailOrMobile).Scan(&dbPassword)
+	userDataModel, err := authRepo.GetUserDataByEmailOrMobile(req.EmailOrMobile)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			utils.SendErrorResponse(w, http.StatusUnauthorized, "Invalid credentials: no user found with email or mobile "+req.EmailOrMobile)
 			return
 		}
-		LogService.LogError("❌ DB error: ", err)
-		utils.SendErrorResponse(w, http.StatusInternalServerError, "Internal server error")
+		utils.SendErrorResponse(w, http.StatusInternalServerError, "Error retrieving user: "+err.Error())
 		return
 	}
 
-	isPassSame, passMatchError := bussinessAuth.ComparePasswordArgon2id(dbPassword, req.Password)
+	isPassSame, passMatchError := bussinessAuth.ComparePasswordArgon2id(userDataModel.Password, req.Password)
 	if passMatchError != nil {
-		utils.SendErrorResponse(w, http.StatusUnauthorized, "Invalid credentials: pass: "+req.Password+" was wrong, correct Pass is "+dbPassword)
+		utils.SendErrorResponse(w, http.StatusUnauthorized, "Invalid credentials: pass: "+req.Password+" was wrong, correct Pass is "+userDataModel.Password)
 		return
 	} else if !isPassSame {
-		utils.SendErrorResponse(w, http.StatusUnauthorized, "Invalid credentials: pass: "+req.Password+" was wrong, correct Pass is "+dbPassword)
+		utils.SendErrorResponse(w, http.StatusUnauthorized, "Invalid credentials: pass: "+req.Password+" was wrong, correct Pass is "+userDataModel.Password)
 		return
 	}
-	// Success
-	var data = map[string]string{"message": "✅ Login successful for " + req.EmailOrMobile}
+
+	loginLogsModel := models.LoginLogsRecord{
+		UserId:       userDataModel.UserId,
+		AppVersion:   req.AppVersion,
+		UserAgent:    req.UserAgent,
+		LocationLat:  &req.LocationLat,
+		LocationLong: &req.LocationLong,
+		IpAddress:    &req.IpAddress,
+	}
+
+	authRepo.InsertLoginLog(loginLogsModel)
+	generatedJwt, jwtError := bussinessAuth.GenerateJWTToken(loginLogsModel.UserId)
+	if jwtError != nil || generatedJwt == nil || *generatedJwt == "" {
+		utils.SendErrorResponse(w, http.StatusInternalServerError, "Error generating JWT token: "+jwtError.Error())
+		return
+	}
+
+	updateTokenError := authRepo.UpdateLoginAuthToken(loginLogsModel.UserId, *generatedJwt)
+	if updateTokenError != nil {
+		utils.SendErrorResponse(w, http.StatusInternalServerError, "Error updating auth token: "+updateTokenError.Error())
+		return
+	}
+	data := models.LoginResponseModel{
+		DisplayName:  userDataModel.DisplayName,
+		AuthCheckSum: *generatedJwt,
+	}
 	utils.SendSuccessResponse(w, http.StatusOK, data)
 }
 

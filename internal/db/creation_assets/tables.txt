@@ -14,7 +14,8 @@ CREATE TABLE [dbo].[users](
 	[profilePic] [text] NULL,
 	[createdAt] [datetime] NOT NULL,
 	[updatedAt] [datetime] NULL,
-	[roleId] [int] NOT NULL
+	[roleId] [int] NOT NULL,
+	[authToken] [varchar](1024) NULL
 ) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
 GO
 ALTER TABLE [dbo].[users] ADD PRIMARY KEY CLUSTERED 
@@ -60,13 +61,25 @@ GO
 
 --------------------------------------
 
-CREATE TABLE roles(
-	roleId 			int primary key	IDENTITY(1,1) NOT NULL,
-	roleName 		varchar(10) NOT NULL,
-	roleDescription varchar(255),
-	createdAt		datetime NOT NULL DEFAULT GETDATE(),
-	updatedAt		datetime
-)
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[roles](
+	[roleId] [int] IDENTITY(1,1) NOT NULL,
+	[roleName] [varchar](10) NOT NULL,
+	[roleDescription] [varchar](255) NULL,
+	[createdAt] [datetime] NOT NULL,
+	[updatedAt] [datetime] NULL
+) ON [PRIMARY]
+GO
+ALTER TABLE [dbo].[roles] ADD PRIMARY KEY CLUSTERED 
+(
+	[roleId] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, SORT_IN_TEMPDB = OFF, IGNORE_DUP_KEY = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+GO
+ALTER TABLE [dbo].[roles] ADD  DEFAULT (getdate()) FOR [createdAt]
+GO
 
 INSERT INTO roles (roleName, roleDescription) VALUES 
 ('owner', 'Owner of the Gym'),
@@ -107,13 +120,29 @@ ALTER TABLE [dbo].[gym]  WITH CHECK ADD FOREIGN KEY([createdBy])
 REFERENCES [dbo].[users] ([userId])
 GO
 
-
 --------------
 
-insert into users (userName, userPass, gender, mobile, roleId) values 
-('Udit Nair', 'p*********', 'M', '7011490*3*', 1)
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[loginLogs](
+	[id] [int] IDENTITY(1,1) NOT NULL,
+	[userId] [int] NOT NULL,
+	[loginDate] [datetime] NOT NULL,
+	[appVersion] [varchar](20) NOT NULL,
+	[userAgent] [varchar](255) NOT NULL,
+	[locationLat] [varchar](20) NULL,
+	[locationLong] [varchar](20) NULL,
+	[ipAddress] [varchar](45) NULL
+) ON [PRIMARY]
+GO
+ALTER TABLE [dbo].[loginLogs] ADD PRIMARY KEY CLUSTERED 
+(
+	[id] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, SORT_IN_TEMPDB = OFF, IGNORE_DUP_KEY = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+GO
+ALTER TABLE [dbo].[loginLogs] ADD  DEFAULT (getdate()) FOR [loginDate]
+GO
 
-insert into gym (gymName, state, city, gymAddress, contactNo, officialEmail, createdBy) values 
-('Testing Gym', 'Delhi', 'New Delhi', '123 Fitness St, Gyan Mandir Road, New Delhi - 110044', '7011490*3*', 'TestingGym1@gmail.com', 1)
-
-select * from roles;
+--------------
