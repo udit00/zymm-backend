@@ -1,38 +1,33 @@
 package api
 
 import (
-	"encoding/json"
-	"fmt"
-	"log"
 	"net/http"
-	"zymm/internal/repository"
+	authRepo "zymm/internal/repository/auth_repo"
+	LogService "zymm/internal/service/log_service"
+	"zymm/utils"
 )
 
+const userApiVersion = "v1"
+const userApiPrefix = "user"
+
+func userRouteAppended(newRoute string) string {
+	return utils.ApiRoute(userApiVersion, userApiPrefix, newRoute)
+}
+
 func UserHandlerDelegate(mux *http.ServeMux) {
-	mux.HandleFunc("/testHandler1", _TestHandler)
-	mux.HandleFunc("/testHandler2", _TestHandler2)
+	mux.HandleFunc(userRouteAppended("getUserData"), getUserData)
 }
 
-func _TestHandler(w http.ResponseWriter, r *http.Request) {
-
-	response := map[string]string{"status": "Test 1"}
-	w.Header().Set("Content-Type", "application/json")
-	user, userErr := repository.GetAllUsers()
-
-	if userErr != nil {
-		fmt.Errorf("ERROR FOUND")
+func getUserData(w http.ResponseWriter, r *http.Request) {
+	LogService.LogMessage("getUserData was called")
+	// Pretend login is successful and build response
+	userData, err := authRepo.GetUserByUserId(1)
+	if err != nil {
+		LogService.LogError("❌ Error fetching user data: ", err)
+		utils.SendErrorResponse(w, http.StatusInternalServerError, "Error fetching user data: "+err.Error())
+		return
 	}
-	if len(user) <= 0 {
-		fmt.Println("ZERO NADA")
-	}
-	for i := 0; i < len(user); i++ {
-		log.Println(user[i].Name + " - " + user[i].Pass)
-	}
-	json.NewEncoder(w).Encode(response)
-}
+	// utils.SendErrorResponse(w, http.StatusInternalServerError, "Error fetching user data: ", userData)
 
-func _TestHandler2(w http.ResponseWriter, r *http.Request) {
-	response := map[string]string{"status": "Test 2"}
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	utils.SendSuccessResponse(w, http.StatusOK, userData)
 }

@@ -16,6 +16,11 @@ import (
 */
 
 func main() {
+
+	// key := make([]byte, 64)
+	// _, _ = rand.Read(key)
+	// LogService.LogMessage("my key: " + base64.StdEncoding.EncodeToString(key))
+
 	// load variables from .env into the environment
 	if err := godotenv.Load(); err != nil {
 		log.Println("⚠️  No .env file found, falling back to system env")
@@ -27,12 +32,6 @@ func main() {
 	}
 
 	mux := http.NewServeMux()
-
-	/*
-	 register routes
-	 http://localhost:10000/<handler>
-	 ex: http://localhost:10000/api/
-	*/
 
 	db.InitDB()
 
