@@ -44,3 +44,15 @@ func main() {
 		log.Fatalf("Server failed: %v", err)
 	}
 }
+
+// docker build . -t uditnair90/api-padhai-golang:latest
+// docker push uditnair90/api-padhai-golang:latest
+
+/*  DOCKER BUILD AND PUSH
+docker build . -t uditnair90/api-padhai-golang:latest && docker push uditnair90/api-padhai-golang:latest
+*/
+
+// docker pull uditnair90/api-padhai-golang:latest
+// docker run -d --pull=always --quiet --name uditnair90_api-padhai-golang --env PORT=5000 --publish 5000:5000 uditnair90/api-padhai-golang:latest
+// docker run -v ~/secrets/.env:/app/.env -d --pull=always --quiet --name uditnair90_api-padhai-golang --env PORT=5000 --publish 5000:5000 uditnair90/api-padhai-golang:latest
+// docker image prune -f     ###REMOVES UNUSED IMAGES###
