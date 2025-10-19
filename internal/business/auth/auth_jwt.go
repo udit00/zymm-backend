@@ -20,7 +20,7 @@ type MyCustomClaims struct {
 
 func getSecretKey() string {
 	if MY_SECRET_KEY == "" {
-		MY_SECRET_KEY = os.Getenv("MY_SECRET_KEY")
+		MY_SECRET_KEY = os.Getenv("ZYMM_BACKEND_AUTH_SECRET_KEY")
 	}
 
 	if MY_SECRET_KEY == "" {

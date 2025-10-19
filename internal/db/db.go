@@ -12,7 +12,7 @@ import (
 var DB *sql.DB
 
 func InitDB() {
-	user := os.Getenv("DB_USER")
+	user := "sa"
 	pass := os.Getenv("DB_PASS")
 	host := os.Getenv("DB_HOST")
 	port := os.Getenv("DB_PORT")

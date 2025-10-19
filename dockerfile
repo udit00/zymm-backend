@@ -1,5 +1,5 @@
 # Use a specific minor version for stability
-FROM golang:1.23
+FROM golang:1.24
 
 # Set the working directory inside the container
 WORKDIR /app
@@ -14,7 +14,7 @@ RUN go mod download && go mod verify
 COPY . .
 
 # Build the binary
-RUN go build -o bin .
+RUN go build -o bin ./cmd/server/
 
 # Expose the required port
 EXPOSE 5000

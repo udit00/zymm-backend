@@ -26,9 +26,9 @@ func main() {
 		log.Println("⚠️  No .env file found, falling back to system env")
 	}
 
-	port := os.Getenv("PORT")
+	port := os.Getenv("ZYMM_PORT")
 	if port == "" {
-		log.Fatal("❌ PORT not set in environment. Exiting...")
+		log.Fatal("❌ ZYMM_PORT not set in environment. Exiting...")
 	}
 
 	mux := http.NewServeMux()
@@ -45,14 +45,21 @@ func main() {
 	}
 }
 
-// docker build . -t uditnair90/api-padhai-golang:latest
-// docker push uditnair90/api-padhai-golang:latest
+/*  
+	docker build . -t uditnair90/zymm-backend:latest
+	docker push uditnair90/zymm-backend:latest
+	docker pull uditnair90/zymm-backend:latest
+	docker build . -t uditnair90/zymm-backend:latest && docker push uditnair90/zymm-backend:latest
 
-/*  DOCKER BUILD AND PUSH
-docker build . -t uditnair90/api-padhai-golang:latest && docker push uditnair90/api-padhai-golang:latest
+	docker run -v ~/secrets/.env:/app/.env -d --pull=always --quiet --name uditnair90_zymm-backend --publish 5000:5000 uditnair90/zymm-backend:latest
+
+	docker image prune -f     ###REMOVES UNUSED IMAGES###
+	docker rm $(docker ps -a -q --filter status=exited --filter ancestor=uditnair90/zymm-backend:latest)
 */
 
-// docker pull uditnair90/api-padhai-golang:latest
-// docker run -d --pull=always --quiet --name uditnair90_api-padhai-golang --env PORT=5000 --publish 5000:5000 uditnair90/api-padhai-golang:latest
-// docker run -v ~/secrets/.env:/app/.env -d --pull=always --quiet --name uditnair90_api-padhai-golang --env PORT=5000 --publish 5000:5000 uditnair90/api-padhai-golang:latest
-// docker image prune -f     ###REMOVES UNUSED IMAGES###
+/*
+ 	docker run -v ~/secrets/.env:/app/.env -d --pull=always --quiet --name uditnair90_zymm-backend --publish 5000:5000 uditnair90/zymm-backend:latest
+
+	// for debug ( not daemon )
+ 	docker run -v ~/secrets/.env:/app/.env --pull=always --name uditnair90_zymm-backend --publish 5000:5000 uditnair90/zymm-backend:latest
+*/
