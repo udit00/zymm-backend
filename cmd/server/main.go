@@ -45,7 +45,7 @@ func main() {
 	}
 }
 
-/*  
+/*
 	docker build . -t uditnair90/zymm-backend:latest
 	docker push uditnair90/zymm-backend:latest
 	docker pull uditnair90/zymm-backend:latest
@@ -54,7 +54,10 @@ func main() {
 	docker run -v ~/secrets/.env:/app/.env -d --pull=always --quiet --name uditnair90_zymm-backend --publish 5000:5000 uditnair90/zymm-backend:latest
 
 	docker image prune -f     ###REMOVES UNUSED IMAGES###
+	// clear the exited only
 	docker rm $(docker ps -a -q --filter status=exited --filter ancestor=uditnair90/zymm-backend:latest)
+
+	docker rm $(docker ps -a -q --filter ancestor=uditnair90/zymm-backend:latest)
 */
 
 /*

@@ -52,11 +52,8 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	isPassSame, passMatchError := bussinessAuth.ComparePasswordArgon2id(userDataModel.Password, req.Password)
-	if passMatchError != nil {
-		utils.SendErrorResponse(w, http.StatusUnauthorized, "Invalid credentials: pass: "+req.Password+" was wrong, correct Pass is "+userDataModel.Password)
-		return
-	} else if !isPassSame {
-		utils.SendErrorResponse(w, http.StatusUnauthorized, "Invalid credentials: pass: "+req.Password+" was wrong, correct Pass is "+userDataModel.Password)
+	if passMatchError != nil || !isPassSame {
+		utils.SendErrorResponse(w, http.StatusUnauthorized, "Invalid credentials: password was wrong")
 		return
 	}
 
