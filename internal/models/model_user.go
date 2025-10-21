@@ -25,3 +25,18 @@ type LoginLogsRecord struct {
 	LocationLong *string
 	IpAddress    *string
 }
+
+type SelfDataResponse struct {
+	UserId                  int             `json:"userId"`
+	UserName                string          `json:"userName"`
+	Mobile                  string          `json:"mobile"`
+	Email                   *string         `json:"email"`
+	Gender                  string          `json:"gender"`
+	RoleId                  int             `json:"roleId"`
+	ProfilePic              *string         `json:"profilePic"`
+	MembershipId            *int            `json:"membershipId"`
+	PlanId                  *int            `json:"planId"`
+	GymId                   *int            `json:"gymId"`
+	ActiveMembershipDetails *UserMembership `json:"activeMembershipDetails"`
+	VisitedToday            bool            `json:"visitedToday"`
+}

@@ -6,6 +6,6 @@ func GetCurrentDateTime() time.Time {
 	return time.Now()
 }
 
-func GetDbDateTime() string {
-	return GetCurrentDateTime().UTC().Format(time.RFC3339)
+func ConvertTimeToDBDateTime(toChange time.Time) string {
+	return toChange.Format(time.DateTime)
 }

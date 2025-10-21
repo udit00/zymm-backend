@@ -1,6 +1,7 @@
 package membershipRepo
 
 import (
+	"database/sql"
 	"zymm/internal/db"
 	"zymm/internal/models"
 	LogService "zymm/internal/service/log_service"
@@ -35,4 +36,58 @@ func InsertPlanChangeLog(log models.PlanChangeLog) error {
 		return err
 	}
 	return nil
+}
+
+func GetPlanById(planId int) (*models.PlanRecord, error) {
+	plan := &models.PlanRecord{}
+	err := db.DB.QueryRow(`
+		SELECT planId, planBanner, planName, planDesc, planPrice, planDuration, isActive, createdBy, createdAt, gymId
+		FROM plans
+		WHERE planId = @p1`,
+		planId).Scan(
+		&plan.PlanId, &plan.PlanBanner, &plan.PlanName, &plan.PlanDesc, &plan.PlanPrice, &plan.PlanDuration, &plan.IsActive, &plan.CreatedBy, &plan.CreatedAt, &plan.GymId)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, sql.ErrNoRows
+		}
+		LogService.LogError("❌ DB error: ", err)
+		return nil, err
+	}
+	return plan, nil
+}
+
+func GetUserMembershipByUserId(userId int) (*models.UserMembership, error) {
+	membership := &models.UserMembership{}
+	err := db.DB.QueryRow(`
+		SELECT top 1 membershipId, userId, planId, startDate, endDate, isActive, membershipStatus, createdAt
+		FROM userMemberships
+		WHERE userId = @p1
+		and isActive = 1
+		order by createdAt desc`,
+		userId).Scan(
+		&membership.MembershipId, &membership.UserId, &membership.PlanId, &membership.StartDate, &membership.EndDate, &membership.IsActive, &membership.MembershipStatus, &membership.CreatedAt)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, sql.ErrNoRows
+		}
+		LogService.LogError("❌ DB error: ", err)
+		return nil, err
+	}
+	return membership, nil
+}
+
+func InsertMembershipRequest(um models.UserMembership) (*int, error) {
+	var id int
+	// Use OUTPUT INSERTED.planId to get the inserted id
+	err := db.DB.QueryRow(`
+        INSERT INTO userMemberships (userId, planId, startDate, endDate, membershipStatus)
+        OUTPUT INSERTED.membershipId
+        VALUES (@p1, @p2, @p3, @p4, @p5)`,
+		um.UserId, um.PlanId, um.StartDate, um.EndDate, um.MembershipStatus,
+	).Scan(&id)
+	if err != nil {
+		LogService.LogError("❌ DB error inserting userMembership: ", err)
+		return nil, err
+	}
+	return &id, nil
 }

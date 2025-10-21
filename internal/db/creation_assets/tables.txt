@@ -241,3 +241,73 @@ GO
 ALTER TABLE [dbo].[planChangesLogs]  WITH CHECK ADD FOREIGN KEY([planId])
 REFERENCES [dbo].[plans] ([planId])
 GO
+
+---------------------------
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[userMemberships](
+	[membershipId] [int] IDENTITY(1,1) NOT NULL,
+	[userId] [int] NOT NULL,
+	[planId] [int] NOT NULL,
+	[startDate] [datetime] NOT NULL,
+	[endDate] [datetime] NOT NULL,
+	[isActive] [bit] NOT NULL default (1), 
+	[membershipStatus] CHAR(1) NOT NULL DEFAULT 'P' CHECK ([membershipStatus] IN ('P', 'A', 'R', 'E')),	
+	[createdAt] [datetime] NOT NULL
+) ON [PRIMARY]
+GO
+ALTER TABLE [dbo].[userMemberships] ADD PRIMARY KEY CLUSTERED 
+(
+	[membershipId] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, SORT_IN_TEMPDB = OFF, IGNORE_DUP_KEY = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+GO
+ALTER TABLE [dbo].[userMemberships] ADD  DEFAULT (getdate()) FOR [createdAt]
+GO
+ALTER TABLE [dbo].[userMemberships]  WITH CHECK ADD FOREIGN KEY([planId])
+REFERENCES [dbo].[plans] ([planId])
+GO
+ALTER TABLE [dbo].[userMemberships]  WITH CHECK ADD FOREIGN KEY([userId])
+REFERENCES [dbo].[users] ([userId])
+GO
+
+--------------------------
+
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[userMembershipsChangesLogs](
+	[logId] [int] IDENTITY(1,1) NOT NULL,
+	[memberId] [int] NOT NULL,
+	[membershipId] [int] NOT NULL,
+	[changesMade] [char](1) NOT NULL,
+	[changedBy] [int] NOT NULL,
+	[loggedAt] [datetime] NOT NULL
+) ON [PRIMARY]
+GO
+ALTER TABLE [dbo].[userMembershipsChangesLogs] ADD PRIMARY KEY CLUSTERED 
+(
+	[logId] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, SORT_IN_TEMPDB = OFF, IGNORE_DUP_KEY = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+GO
+ALTER TABLE [dbo].[userMembershipsChangesLogs] ADD  DEFAULT (getdate()) FOR [loggedAt]
+GO
+ALTER TABLE [dbo].[userMembershipsChangesLogs]  WITH CHECK ADD FOREIGN KEY([changedBy])
+REFERENCES [dbo].[users] ([userId])
+GO
+ALTER TABLE [dbo].[userMembershipsChangesLogs]  WITH CHECK ADD FOREIGN KEY([memberId])
+REFERENCES [dbo].[users] ([userId])
+GO
+ALTER TABLE [dbo].[userMembershipsChangesLogs]  WITH CHECK ADD FOREIGN KEY([membershipId])
+REFERENCES [dbo].[userMemberships] ([membershipId])
+GO
+ALTER TABLE [dbo].[userMembershipsChangesLogs]  WITH CHECK ADD CHECK  (([changesMade]='R' OR [changesMade]='A'))
+GO
+
+---------------------------
+
+
