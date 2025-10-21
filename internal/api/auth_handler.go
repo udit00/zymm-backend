@@ -98,9 +98,9 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Basic validation
-	if req.DisplayName == "" || req.Mobile == "" || req.Password == "" || req.Gender == "" {
-		utils.SendErrorResponse(w, http.StatusBadRequest, "Missing required fields")
+	validationRequestErr := bussinessAuth.ValidateRegistrationRequest(req)
+	if validationRequestErr != nil {
+		utils.SendErrorResponse(w, http.StatusBadRequest, validationRequestErr.Error())
 		return
 	}
 
@@ -122,16 +122,16 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var regLog models.RegistrationLogsRecord = models.RegistrationLogsRecord{
-		UserId:      insertedUserRecord.UserId,
-		UserName:    insertedUserRecord.UserName,
-		UserPass:    insertedUserRecord.UserPass,
-		Gender:      insertedUserRecord.Gender,
-		Mobile:      insertedUserRecord.Mobile,
-		Email:       insertedUserRecord.Email,
-		ProfilePic:  insertedUserRecord.ProfilePic,
-		RoleId:      insertedUserRecord.RoleId,
-		AppVersion:  req.AppVersion,
-		AppPlatform: req.AppPlatform,
+		UserId:     insertedUserRecord.UserId,
+		UserName:   insertedUserRecord.UserName,
+		UserPass:   insertedUserRecord.UserPass,
+		Gender:     insertedUserRecord.Gender,
+		Mobile:     insertedUserRecord.Mobile,
+		Email:      insertedUserRecord.Email,
+		ProfilePic: insertedUserRecord.ProfilePic,
+		RoleId:     insertedUserRecord.RoleId,
+		AppVersion: req.AppVersion,
+		UserAgent:  req.UserAgent,
 	}
 
 	registrationLogInsertionError := authRepo.InsertRegistrationLog(regLog)
@@ -140,11 +140,26 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 		utils.SendErrorResponse(w, http.StatusInternalServerError, "Error logging registration: "+registrationLogInsertionError.Error())
 		return
 	}
+
+	loginLogsModel := models.LoginLogsRecord{
+		UserId:       insertedUserRecord.UserId,
+		AppVersion:   req.AppVersion,
+		UserAgent:    req.UserAgent,
+		LocationLat:  &req.LocationLat,
+		LocationLong: &req.LocationLong,
+		IpAddress:    &req.IpAddress,
+	}
+
+	authRepo.InsertLoginLog(loginLogsModel)
+	generatedJwt, jwtError := bussinessAuth.GenerateJWTToken(loginLogsModel.UserId)
+	if jwtError != nil || generatedJwt == nil || *generatedJwt == "" {
+		utils.SendErrorResponse(w, http.StatusInternalServerError, "Error generating JWT token: "+jwtError.Error())
+		return
+	}
+
 	resp := models.RegistrationApiResponseModel{
-		UserId:     insertedUserRecord.UserId,
-		UserName:   insertedUserRecord.UserName,
-		Registered: true,
-		Message:    "✅ Registration successful for " + insertedUserRecord.UserName,
+		DisplayName:  insertedUserRecord.UserName,
+		AuthCheckSum: *generatedJwt,
 	}
 
 	utils.SendSuccessResponse(w, http.StatusOK, resp)
@@ -163,9 +178,9 @@ func ownerRegistrationHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Basic validation
-	if req.DisplayName == "" || req.Mobile == "" || req.Password == "" || req.Gender == "" || req.GymName == "" || req.State == "" || req.City == "" || req.GymAddress == "" || req.ContactNo == "" || req.OfficialEmail == "" {
-		utils.SendErrorResponse(w, http.StatusBadRequest, "Missing required fields")
+	validationRequestErr := bussinessAuth.ValidateOwnerRegistrationRequest(req)
+	if validationRequestErr != nil {
+		utils.SendErrorResponse(w, http.StatusBadRequest, validationRequestErr.Error())
 		return
 	}
 
@@ -187,16 +202,16 @@ func ownerRegistrationHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var regLog models.RegistrationLogsRecord = models.RegistrationLogsRecord{
-		UserId:      insertedUserRecord.UserId,
-		UserName:    insertedUserRecord.UserName,
-		UserPass:    insertedUserRecord.UserPass,
-		Gender:      insertedUserRecord.Gender,
-		Mobile:      insertedUserRecord.Mobile,
-		Email:       insertedUserRecord.Email,
-		ProfilePic:  insertedUserRecord.ProfilePic,
-		RoleId:      insertedUserRecord.RoleId,
-		AppVersion:  req.AppVersion,
-		AppPlatform: req.AppPlatform,
+		UserId:     insertedUserRecord.UserId,
+		UserName:   insertedUserRecord.UserName,
+		UserPass:   insertedUserRecord.UserPass,
+		Gender:     insertedUserRecord.Gender,
+		Mobile:     insertedUserRecord.Mobile,
+		Email:      insertedUserRecord.Email,
+		ProfilePic: insertedUserRecord.ProfilePic,
+		RoleId:     insertedUserRecord.RoleId,
+		AppVersion: req.AppVersion,
+		UserAgent:  req.UserAgent,
 	}
 
 	registrationLogInsertionError := authRepo.InsertRegistrationLog(regLog)
@@ -218,18 +233,32 @@ func ownerRegistrationHandler(w http.ResponseWriter, r *http.Request) {
 		LocationLong:  req.LocationLong,
 	}
 
-	insertedGymRecordId, gymInsertionError := authRepo.InsertGym(db.DB, gymRecord)
+	_, gymInsertionError := authRepo.InsertGym(db.DB, gymRecord)
 
 	if gymInsertionError != nil {
 		utils.SendErrorResponse(w, http.StatusInternalServerError, "Error creating gym: "+gymInsertionError.Error())
 		return
 	}
 
+	loginLogsModel := models.LoginLogsRecord{
+		UserId:       insertedUserRecord.UserId,
+		AppVersion:   req.AppVersion,
+		UserAgent:    req.UserAgent,
+		LocationLat:  &req.LocationLat,
+		LocationLong: &req.LocationLong,
+		IpAddress:    &req.IpAddress,
+	}
+
+	authRepo.InsertLoginLog(loginLogsModel)
+	generatedJwt, jwtError := bussinessAuth.GenerateJWTToken(loginLogsModel.UserId)
+	if jwtError != nil || generatedJwt == nil || *generatedJwt == "" {
+		utils.SendErrorResponse(w, http.StatusInternalServerError, "Error generating JWT token: "+jwtError.Error())
+		return
+	}
+
 	resp := models.RegistrationApiResponseModel{
-		UserId:     insertedUserRecord.UserId,
-		UserName:   insertedUserRecord.UserName,
-		Registered: true,
-		Message:    "✅ Registration successful for " + insertedUserRecord.UserName + " with Gym ID " + string(*insertedGymRecordId),
+		DisplayName:  insertedUserRecord.UserName,
+		AuthCheckSum: *generatedJwt,
 	}
 
 	utils.SendSuccessResponse(w, http.StatusOK, resp)

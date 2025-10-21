@@ -64,9 +64,9 @@ func InsertRegistrationRecord(record models.UserRecord) (*models.UserRecord, err
 
 func InsertRegistrationLog(record models.RegistrationLogsRecord) error {
 	err := db.DB.QueryRow(`
-		INSERT INTO registrationLogs (userId, userName, userPass, gender, mobile, email, profilePic, roleId, appVersion, appPlatform)
+		INSERT INTO registrationLogs (userId, userName, userPass, gender, mobile, email, profilePic, roleId, appVersion, userAgent)
 		VALUES (@p1, @p2, @p3, @p4, @p5, @p6, @p7, @p8, @p9, @p10)`,
-		record.UserId, record.UserName, record.UserPass, record.Gender, record.Mobile, record.Email, record.ProfilePic, record.RoleId, record.AppVersion, record.AppPlatform).Err()
+		record.UserId, record.UserName, record.UserPass, record.Gender, record.Mobile, record.Email, record.ProfilePic, record.RoleId, record.AppVersion, record.UserAgent).Err()
 	if err != nil {
 		LogService.LogError("❌ DB error: ", err)
 		return err
@@ -122,4 +122,22 @@ func InsertGym(db *sql.DB, gym gymModels.GymRecord) (*int, error) {
 		return nil, err
 	}
 	return gymId, nil
+}
+
+func GetGymById(gymId int) (*gymModels.GymRecord, error) {
+	gym := &gymModels.GymRecord{}
+	err := db.DB.QueryRow(`
+		SELECT gymId, gymName, state, city, gymAddress, contactNo, officialEmail, createdBy, createdAt, updatedAt, locationLat, locationLong
+		FROM gym
+		WHERE gymId = @p1`,
+		gymId).Scan(
+		&gym.GymId, &gym.GymName, &gym.State, &gym.City, &gym.GymAddress, &gym.ContactNo, &gym.OfficialEmail, &gym.CreatedBy, &gym.CreatedAt, &gym.UpdatedAt, &gym.LocationLat, &gym.LocationLong)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, sql.ErrNoRows
+		}
+		LogService.LogError("❌ DB error: ", err)
+		return nil, err
+	}
+	return gym, nil
 }

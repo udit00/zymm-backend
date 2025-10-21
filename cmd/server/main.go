@@ -37,6 +37,7 @@ func main() {
 
 	api.UserHandlerDelegate(mux)
 	api.AuthHandlerDelegate(mux)
+	api.MembershipHandlerDelegate(mux)
 
 	log.Println("🚀 Server running on http://localhost:" + port)
 	err := http.ListenAndServe(":"+port, mux)

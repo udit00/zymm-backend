@@ -1,5 +1,25 @@
 ------------------------------------
 
+	DBCC CHECKIDENT ('gym', RESEED, 0);
+	DBCC CHECKIDENT ('users', RESEED, 0);
+	DBCC CHECKIDENT ('registrationLogs', RESEED, 1);
+	DBCC CHECKIDENT ('loginLogs', RESEED, 1);
+
+	delete from gym 
+	delete from users
+	truncate table registrationLogs
+	truncate table loginLogs
+
+	select * from gym
+	select * from users
+	select * from registrationLogs
+	select * from loginLogs
+
+    select * from memberships
+    select * from membershipChangesLogs
+
+------------------------------------
+
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -47,7 +67,7 @@ CREATE TABLE [dbo].[registrationLogs](
 	[profilePic] [text] NULL,
 	[roleId] [int] NOT NULL,
 	[appVersion] [varchar](20) NULL,
-	[appPlatform] [varchar](20) NULL,
+	[userAgent] [varchar](255) NOT NULL,
 	[createdAt] [datetime] NOT NULL
 ) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
 GO
@@ -146,3 +166,78 @@ ALTER TABLE [dbo].[loginLogs] ADD  DEFAULT (getdate()) FOR [loginDate]
 GO
 
 --------------
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[plans](
+	[planId] [int] IDENTITY(1,1) NOT NULL,
+	[planBanner] [text] NULL,
+	[planName] [varchar](255) NOT NULL,
+	[planDesc] [text] NOT NULL,
+	[planPrice] [decimal](10, 2) NOT NULL,
+	[planDuration] [int] NOT NULL,
+	[isActive] [bit] NULL,
+	[createdBy] [int] NULL,
+	[createdAt] [datetime] NULL,
+	[planChangeLogId] [int] NULL,
+	[gymId] [int] NULL
+) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+GO
+ALTER TABLE [dbo].[plans] ADD PRIMARY KEY CLUSTERED 
+(
+	[planId] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, SORT_IN_TEMPDB = OFF, IGNORE_DUP_KEY = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+GO
+ALTER TABLE [dbo].[plans] ADD  DEFAULT ((1)) FOR [isActive]
+GO
+ALTER TABLE [dbo].[plans] ADD  DEFAULT (getdate()) FOR [createdAt]
+GO
+ALTER TABLE [dbo].[plans]  WITH CHECK ADD FOREIGN KEY([createdBy])
+REFERENCES [dbo].[users] ([userId])
+GO
+ALTER TABLE [dbo].[plans]  WITH CHECK ADD FOREIGN KEY([gymId])
+REFERENCES [dbo].[gym] ([gymId])
+GO
+
+-----------------
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[planChangesLogs](
+	[logId] [int] IDENTITY(1,1) NOT NULL,
+	[planId] [int] NULL,
+	[changedBy] [int] NULL,
+	[changeType] [varchar](50) NOT NULL,
+	[changeDetails] [text] NOT NULL,
+	[changedAt] [datetime] NULL,
+	[oldPlanBanner] [text] NULL,
+	[oldPlanName] [varchar](255) NOT NULL,
+	[oldPlanDesc] [text] NOT NULL,
+	[oldPlanPrice] [decimal](10, 2) NOT NULL,
+	[oldPlanDuration] [int] NOT NULL,
+	[oldIsActive] [bit] NOT NULL,
+	[newPlanBanner] [text] NOT NULL,
+	[newPlanName] [varchar](255) NOT NULL,
+	[newPlanDesc] [text] NOT NULL,
+	[newPlanPrice] [decimal](10, 2) NULL,
+	[newPlanDuration] [int] NOT NULL,
+	[newIsActive] [bit] NOT NULL
+) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+GO
+ALTER TABLE [dbo].[planChangesLogs] ADD PRIMARY KEY CLUSTERED 
+(
+	[logId] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, SORT_IN_TEMPDB = OFF, IGNORE_DUP_KEY = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+GO
+ALTER TABLE [dbo].[planChangesLogs] ADD  DEFAULT (getdate()) FOR [changedAt]
+GO
+ALTER TABLE [dbo].[planChangesLogs]  WITH CHECK ADD FOREIGN KEY([changedBy])
+REFERENCES [dbo].[users] ([userId])
+GO
+ALTER TABLE [dbo].[planChangesLogs]  WITH CHECK ADD FOREIGN KEY([planId])
+REFERENCES [dbo].[plans] ([planId])
+GO
