@@ -8,7 +8,7 @@ import (
 )
 
 func ApiRoute(apiVersion string, apiPrefix string, newRoute string) string {
-	return "/" + config.AppName + "/" + apiVersion + "/" + apiPrefix + "/" + newRoute
+	return "/" + config.GetAppName() + "/" + apiVersion + "/" + apiPrefix + "/" + newRoute
 }
 
 func SendErrorResponse(writer http.ResponseWriter, status int, errMsg string, data ...interface{}) {

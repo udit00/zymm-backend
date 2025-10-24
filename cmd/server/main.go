@@ -3,11 +3,9 @@ package main
 import (
 	"log"
 	"net/http"
-	"os"
 	"zymm/internal/api"
+	"zymm/internal/config"
 	"zymm/internal/db"
-
-	"github.com/joho/godotenv"
 )
 
 /*
@@ -21,15 +19,7 @@ func main() {
 	// _, _ = rand.Read(key)
 	// LogService.LogMessage("my key: " + base64.StdEncoding.EncodeToString(key))
 
-	// load variables from .env into the environment
-	if err := godotenv.Load(); err != nil {
-		log.Println("⚠️  No .env file found, falling back to system env")
-	}
-
-	port := os.Getenv("ZYMM_PORT")
-	if port == "" {
-		log.Fatal("❌ ZYMM_PORT not set in environment. Exiting...")
-	}
+	config.Init()
 
 	mux := http.NewServeMux()
 
@@ -39,8 +29,8 @@ func main() {
 	api.AuthHandlerDelegate(mux)
 	api.MembershipHandlerDelegate(mux)
 
-	log.Println("🚀 Server running on http://localhost:" + port)
-	err := http.ListenAndServe(":"+port, mux)
+	log.Println("🚀 Server running on http://localhost:" + config.GetAppPortInString())
+	err := http.ListenAndServe(":"+config.GetAppPortInString(), mux)
 	if err != nil {
 		log.Fatalf("Server failed: %v", err)
 	}

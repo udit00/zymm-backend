@@ -4,14 +4,24 @@ import (
 	"database/sql"
 	"errors"
 	"strings"
+	"time"
 
 	"zymm/internal/models"
 	authRepo "zymm/internal/repository/auth_repo"
+	membershipRepo "zymm/internal/repository/membership_repo"
 )
 
-func ValidateCreatePlanRequest(req models.CreatePlanRequest) error {
+func ValidateUpsertPlanRequest(req models.UpsertPlanRequest) error {
 	missing := []string{}
-
+	var checkPlanId int = 0
+	if req.PlanId == nil {
+		checkPlanId = -1
+	} else {
+		checkPlanId = *req.PlanId
+	}
+	if checkPlanId < 0 {
+		missing = append(missing, "planId")
+	}
 	if req.PlanName == "" {
 		missing = append(missing, "planName")
 	}
@@ -41,19 +51,24 @@ func ValidateCreatePlanRequest(req models.CreatePlanRequest) error {
 	return nil
 }
 
-func ValidateCreatePlanWithDBChecks(req models.CreatePlanRequest, userId int) error {
+func ValidateUpsertPlanWithDBChecks(req models.UpsertPlanRequest, userId int) error {
 	// First validate the basic request fields
-	if err := ValidateCreatePlanRequest(req); err != nil {
+	if err := ValidateUpsertPlanRequest(req); err != nil {
 		return err
 	}
 
 	// Check if user exists
-	_, err := authRepo.GetUserByUserId(userId)
+	userDetails, err := authRepo.GetUserByUserId(userId)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return errors.New("User does not exist")
 		}
 		return errors.New("Error validating user: " + err.Error())
+	}
+
+	// 1 is owner and 2 is manager, anyone else shouldn't edit or create plans
+	if userDetails.RoleId > 2 {
+		return errors.New("Only Owner or Manager of the gym can create or edit plans.")
 	}
 
 	// Check if gym exists
@@ -65,5 +80,104 @@ func ValidateCreatePlanWithDBChecks(req models.CreatePlanRequest, userId int) er
 		return errors.New("Error validating gym: " + err.Error())
 	}
 
+	if *req.PlanId > 0 {
+		planDetails, planDetailsErr := membershipRepo.GetPlanById(*req.PlanId)
+		if planDetailsErr != nil {
+			if planDetailsErr == sql.ErrNoRows {
+				return errors.New("Plan does not exist")
+			}
+			return errors.New("Error validating Plan: " + planDetailsErr.Error())
+		}
+
+		if *planDetails.GymId != req.GymId {
+			return errors.New("Gym does not match in the plan and your gym.")
+		}
+	}
+
 	return nil
+}
+
+func GetPlanChangeDiffDetails(p1 models.PlanRecord, p2 models.PlanRecord) string {
+	differences := []string{}
+
+	// Helper to compare pointer values safely
+	comparePtr := func(a, b interface{}) bool {
+		switch v1 := a.(type) {
+		case *string:
+			v2 := b.(*string)
+			if v1 == nil && v2 == nil {
+				return false
+			}
+			if v1 == nil || v2 == nil {
+				return true
+			}
+			return *v1 != *v2
+
+		case *bool:
+			v2 := b.(*bool)
+			if v1 == nil && v2 == nil {
+				return false
+			}
+			if v1 == nil || v2 == nil {
+				return true
+			}
+			return *v1 != *v2
+
+		case *int:
+			v2 := b.(*int)
+			if v1 == nil && v2 == nil {
+				return false
+			}
+			if v1 == nil || v2 == nil {
+				return true
+			}
+			return *v1 != *v2
+
+		case *time.Time:
+			v2 := b.(*time.Time)
+			if v1 == nil && v2 == nil {
+				return false
+			}
+			if v1 == nil || v2 == nil {
+				return true
+			}
+			return !v1.Equal(*v2)
+		}
+		return false
+	}
+
+	// Compare normal (non-pointer) fields
+	if p1.PlanName != p2.PlanName {
+		differences = append(differences, "PlanName")
+	}
+	if comparePtr(p1.PlanBanner, p2.PlanBanner) {
+		differences = append(differences, "PlanBanner")
+	}
+	if p1.PlanDesc != p2.PlanDesc {
+		differences = append(differences, "PlanDesc")
+	}
+	if p1.PlanPrice != p2.PlanPrice {
+		differences = append(differences, "PlanPrice")
+	}
+	if p1.PlanDuration != p2.PlanDuration {
+		differences = append(differences, "PlanDuration")
+	}
+	if comparePtr(p1.IsActive, p2.IsActive) {
+		differences = append(differences, "IsActive")
+	}
+	if comparePtr(p1.CreatedBy, p2.CreatedBy) {
+		differences = append(differences, "CreatedBy")
+	}
+	if comparePtr(p1.CreatedAt, p2.CreatedAt) {
+		differences = append(differences, "CreatedAt")
+	}
+	if comparePtr(p1.GymId, p2.GymId) {
+		differences = append(differences, "GymId")
+	}
+
+	// Return result
+	if len(differences) > 0 {
+		return strings.Join(differences, ", ")
+	}
+	return ""
 }

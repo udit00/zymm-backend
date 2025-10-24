@@ -4,19 +4,29 @@
 	DBCC CHECKIDENT ('users', RESEED, 0);
 	DBCC CHECKIDENT ('registrationLogs', RESEED, 1);
 	DBCC CHECKIDENT ('loginLogs', RESEED, 1);
+    DBCC CHECKIDENT ('plans', RESEED, 0);
+    DBCC CHECKIDENT ('planChangesLogs', RESEED, 1);
 
 	delete from gym 
 	delete from users
 	truncate table registrationLogs
 	truncate table loginLogs
+    truncate table userMemberships
+    truncate table userMembershipsChangesLogs
+    truncate table planChangesLogs
+    delete from plans
+
 
 	select * from gym
 	select * from users
 	select * from registrationLogs
 	select * from loginLogs
+  
+    select * from userMemberships
+    select * from userMembershipsChangesLogs
 
-    select * from memberships
-    select * from membershipChangesLogs
+    select * from plans
+    select * from planChangesLogs
 
 ------------------------------------
 
@@ -181,7 +191,6 @@ CREATE TABLE [dbo].[plans](
 	[isActive] [bit] NULL,
 	[createdBy] [int] NULL,
 	[createdAt] [datetime] NULL,
-	[planChangeLogId] [int] NULL,
 	[gymId] [int] NULL
 ) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
 GO
@@ -310,4 +319,14 @@ GO
 
 ---------------------------
 
+create table employees (
+    employeeId          INT         primary key identity(1, 1) not null,
+    userId              int         not null,
+    gymId               INT         not null,
+    startedWorking      DATETIME    default getdate() not null,
+    FOREIGN KEY (userId) REFERENCES users(userId),
+    FOREIGN KEY (gymId) REFERENCES gym(gymId)
+)
 
+
+---------------------------

@@ -3,17 +3,16 @@ package models
 import "time"
 
 type PlanRecord struct {
-	PlanId          int        `json:"planId"`
-	PlanBanner      *string    `json:"planBanner"`
-	PlanName        string     `json:"planName"`
-	PlanDesc        string     `json:"planDesc"`
-	PlanPrice       float64    `json:"planPrice"`
-	PlanDuration    int        `json:"planDuration"`
-	IsActive        *bool      `json:"isActive"`
-	CreatedBy       *int       `json:"createdBy"`
-	CreatedAt       *time.Time `json:"createdAt"`
-	PlanChangeLogId *int       `json:"planChangeLogId"`
-	GymId           *int       `json:"gymId"`
+	PlanId       int        `json:"planId"`
+	PlanBanner   *string    `json:"planBanner"`
+	PlanName     string     `json:"planName"`
+	PlanDesc     string     `json:"planDesc"`
+	PlanPrice    float64    `json:"planPrice"`
+	PlanDuration int        `json:"planDuration"`
+	IsActive     *bool      `json:"isActive"`
+	CreatedBy    *int       `json:"createdBy"`
+	CreatedAt    *time.Time `json:"createdAt"`
+	GymId        *int       `json:"gymId"`
 }
 
 type PlanChangeLog struct {
@@ -29,16 +28,17 @@ type PlanChangeLog struct {
 	OldPlanPrice    float64    `json:"oldPlanPrice"`
 	OldPlanDuration int        `json:"oldPlanDuration"`
 	OldIsActive     bool       `json:"oldIsActive"`
-	NewPlanBanner   string     `json:"newPlanBanner"`
+	NewPlanBanner   *string    `json:"newPlanBanner"`
 	NewPlanName     string     `json:"newPlanName"`
 	NewPlanDesc     string     `json:"newPlanDesc"`
-	NewPlanPrice    *float64   `json:"newPlanPrice"`
+	NewPlanPrice    float64    `json:"newPlanPrice"`
 	NewPlanDuration int        `json:"newPlanDuration"`
 	NewIsActive     bool       `json:"newIsActive"`
 }
 
 // CreatePlanRequest represents the API payload to create a plan
-type CreatePlanRequest struct {
+type UpsertPlanRequest struct {
+	PlanId       *int    `json:"planId"`
 	PlanBanner   *string `json:"planBanner"`
 	PlanName     string  `json:"planName"`
 	PlanDesc     string  `json:"planDesc"`
@@ -47,6 +47,7 @@ type CreatePlanRequest struct {
 	GymId        int     `json:"gymId"`
 	UserAgent    string  `json:"userAgent"`
 	AppVersion   string  `json:"appVersion"`
+	IsActive     bool    `json:"isActive"`
 }
 
 type UserMembership struct {

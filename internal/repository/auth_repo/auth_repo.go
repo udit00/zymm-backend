@@ -53,7 +53,7 @@ func InsertRegistrationRecord(record models.UserRecord) (*models.UserRecord, err
 		INSERT INTO users (userName, userPass, gender, mobile, email, profilePic, roleId)
 		OUTPUT INSERTED.userId
 		VALUES (@p1, @p2, @p3, @p4, @p5, @p6, @p7)`,
-		record.UserName, hashedPass, record.Gender, record.Mobile, record.Email, record.ProfilePic, 5).Scan(&userId)
+		record.UserName, hashedPass, record.Gender, record.Mobile, record.Email, record.ProfilePic, record.RoleId).Scan(&userId)
 	if err != nil {
 		LogService.LogError("❌ DB error: ", err)
 		return nil, err

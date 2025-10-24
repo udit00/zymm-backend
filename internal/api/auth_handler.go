@@ -4,7 +4,9 @@ import (
 	"database/sql"
 	"encoding/json"
 	"net/http"
+	"strings"
 	bussinessAuth "zymm/internal/business/auth"
+	"zymm/internal/config"
 	"zymm/internal/db"
 	"zymm/internal/models"
 	gymModels "zymm/internal/models/gym_models"
@@ -21,9 +23,35 @@ func authRouteAppended(newRoute string) string {
 }
 
 func AuthHandlerDelegate(mux *http.ServeMux) {
+	mux.HandleFunc(authRouteAppended("getAuthTokenData"), getAuthTokenData)
 	mux.HandleFunc(authRouteAppended("login"), loginHandler)
 	mux.HandleFunc(authRouteAppended("registration"), registerHandler)
 	mux.HandleFunc(authRouteAppended("ownerRegistration"), ownerRegistrationHandler)
+}
+
+func getAuthTokenData(w http.ResponseWriter, r *http.Request) {
+	if config.IsDebug() {
+		authHeader := r.Header.Get("Authorization")
+		if authHeader == "" {
+			utils.SendErrorResponse(w, http.StatusUnauthorized, "Missing Authorization header")
+			return
+		}
+		if !strings.HasPrefix(authHeader, "Bearer ") {
+			utils.SendErrorResponse(w, http.StatusUnauthorized, "Invalid Authorization header")
+			return
+		}
+
+		token := strings.TrimSpace(strings.TrimPrefix(authHeader, "Bearer "))
+		claims, err := bussinessAuth.GetDataFromJWTToken(token)
+		if err != nil {
+			LogService.LogError("AuthMiddleware: token validation failed: ", err)
+			utils.SendErrorResponse(w, http.StatusUnauthorized, "Invalid or expired auth token")
+			return
+		}
+		utils.SendSuccessResponse(w, http.StatusOK, claims)
+	} else {
+		utils.SendErrorResponse(w, http.StatusForbidden, "What are you doing here?")
+	}
 }
 
 func loginHandler(w http.ResponseWriter, r *http.Request) {
@@ -193,7 +221,7 @@ func ownerRegistrationHandler(w http.ResponseWriter, r *http.Request) {
 		UserId:     0,
 		Gender:     req.Gender,
 		ProfilePic: req.DisplayPic,
-		RoleId:     5, // Default role ID for regular users
+		RoleId:     1,
 	})
 
 	if userInsertionError != nil {
@@ -253,6 +281,12 @@ func ownerRegistrationHandler(w http.ResponseWriter, r *http.Request) {
 	generatedJwt, jwtError := bussinessAuth.GenerateJWTToken(loginLogsModel.UserId)
 	if jwtError != nil || generatedJwt == nil || *generatedJwt == "" {
 		utils.SendErrorResponse(w, http.StatusInternalServerError, "Error generating JWT token: "+jwtError.Error())
+		return
+	}
+
+	updateAuthTokenErr := authRepo.UpdateLoginAuthToken(insertedUserRecord.UserId, *generatedJwt)
+	if updateAuthTokenErr != nil {
+		utils.SendErrorResponse(w, http.StatusBadRequest, updateAuthTokenErr.Error())
 		return
 	}
 
