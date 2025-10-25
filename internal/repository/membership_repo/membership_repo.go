@@ -41,7 +41,7 @@ func UpdatePlan(newPlanDetails models.PlanRecord) error {
 		planDesc = @p3,
 		planPrice = @p4,
 		planDuration = @p5,
-		isActive = @p6,
+		isActive = @p6,		
 		gymId	= @p7
 		WHERE planId = @p8`,
 		newPlanDetails.PlanBanner,

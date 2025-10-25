@@ -6,15 +6,25 @@
 	DBCC CHECKIDENT ('loginLogs', RESEED, 1);
     DBCC CHECKIDENT ('plans', RESEED, 0);
     DBCC CHECKIDENT ('planChangesLogs', RESEED, 1);
+    DBCC CHECKIDENT ('employees', RESEED, 1);
 
 	delete from gym 
+    GO
 	delete from users
+    GO
 	truncate table registrationLogs
+    GO
 	truncate table loginLogs
+    GO
     truncate table userMemberships
+    GO
     truncate table userMembershipsChangesLogs
+    GO
     truncate table planChangesLogs
+    GO
     delete from plans
+    GO
+    truncate table employees
 
 
 	select * from gym
@@ -27,6 +37,8 @@
 
     select * from plans
     select * from planChangesLogs
+
+    select * from employees
 
 ------------------------------------
 
@@ -88,35 +100,6 @@ ALTER TABLE [dbo].[registrationLogs] ADD PRIMARY KEY CLUSTERED
 GO
 ALTER TABLE [dbo].[registrationLogs] ADD  DEFAULT (getdate()) FOR [createdAt]
 GO
-
---------------------------------------
-
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
-CREATE TABLE [dbo].[roles](
-	[roleId] [int] IDENTITY(1,1) NOT NULL,
-	[roleName] [varchar](10) NOT NULL,
-	[roleDescription] [varchar](255) NULL,
-	[createdAt] [datetime] NOT NULL,
-	[updatedAt] [datetime] NULL
-) ON [PRIMARY]
-GO
-ALTER TABLE [dbo].[roles] ADD PRIMARY KEY CLUSTERED 
-(
-	[roleId] ASC
-)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, SORT_IN_TEMPDB = OFF, IGNORE_DUP_KEY = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
-GO
-ALTER TABLE [dbo].[roles] ADD  DEFAULT (getdate()) FOR [createdAt]
-GO
-
-INSERT INTO roles (roleName, roleDescription) VALUES 
-('owner', 'Owner of the Gym'),
-('manager', 'Manager of the gym with almost all of the rights ( less than owner )'),
-('staff', 'Staff of the gym with limited rights ( less than manager ), usually under a manager'),
-('trainer', 'Trainer of the gym with limited rights, client management and scheduling'),
-('member', 'Regular gym member with access to facilities');
 
 --------------
 

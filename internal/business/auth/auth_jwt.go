@@ -15,6 +15,7 @@ var MySigningMethod = jwt.SigningMethodHS256
 
 type MyCustomClaims struct {
 	UserId int
+	RoleId int
 	Expiry int64
 }
 
@@ -33,9 +34,10 @@ func getSecretKey() string {
 }
 
 var authTokenUserIdKey = "userId"
+var authTokenRoleIdKey = "roleId"
 var authTokenExpKey = "exp"
 
-func GenerateJWTToken(userId int) (*string, error) {
+func GenerateJWTToken(userId int, roleId int) (*string, error) {
 	secretKey := getSecretKey()
 	if secretKey == "" {
 		return nil, fmt.Errorf("secret key is not set")
@@ -44,6 +46,7 @@ func GenerateJWTToken(userId int) (*string, error) {
 	expirationTime := time.Now().Add(time.Hour * 24 * time.Duration(expirationDays)).Unix()
 	claims := jwt.MapClaims{
 		authTokenUserIdKey: userId,
+		authTokenRoleIdKey: roleId,
 		authTokenExpKey:    expirationTime,
 	}
 
@@ -80,14 +83,19 @@ func ValidateToken(tokenString string) (*jwt.Token, error) {
 }
 
 func tokenClaimsValidation(claims jwt.MapClaims) error {
-	if claims[authTokenUserIdKey] == nil || claims[authTokenExpKey] == nil || claims[authTokenUserIdKey] == "" || claims[authTokenExpKey] == "" {
+	if claims[authTokenUserIdKey] == nil ||
+		claims[authTokenRoleIdKey] == nil ||
+		claims[authTokenExpKey] == nil ||
+		claims[authTokenUserIdKey] == "" ||
+		claims[authTokenRoleIdKey] == "" ||
+		claims[authTokenExpKey] == "" {
 		return fmt.Errorf("invalid token claims")
 	}
 	return nil
 }
 
 func getPrintableClaims(claims *MyCustomClaims) string {
-	return fmt.Sprintf("UserId: %d, Expiry: %s", claims.UserId, time.Unix(claims.Expiry, 0))
+	return fmt.Sprintf("UserId: %d, RoleId: %d, Expiry: %s", claims.UserId, claims.RoleId, time.Unix(claims.Expiry, 0))
 }
 
 func GetDataFromJWTToken(tokenString string) (*MyCustomClaims, error) {
@@ -101,6 +109,7 @@ func GetDataFromJWTToken(tokenString string) (*MyCustomClaims, error) {
 	}
 	return &MyCustomClaims{
 		UserId: int(claims[authTokenUserIdKey].(float64)),
+		RoleId: int(claims[authTokenRoleIdKey].(float64)),
 		Expiry: int64(claims[authTokenExpKey].(float64)),
 	}, nil
 }

@@ -11,7 +11,7 @@ import (
 
 func GetUserDataByEmailOrMobile(emailOrMobile string) (*models.LoginUserDataModel, error) {
 	var userData models.LoginUserDataModel
-	err := db.DB.QueryRow("SELECT userId,userName,userPass FROM users WHERE email = @p1 or mobile = @p2", emailOrMobile, emailOrMobile).Scan(&userData.UserId, &userData.DisplayName, &userData.Password)
+	err := db.DB.QueryRow("SELECT userId,userName,userPass,roleId FROM users WHERE email = @p1 or mobile = @p2", emailOrMobile, emailOrMobile).Scan(&userData.UserId, &userData.DisplayName, &userData.Password, &userData.RoleId)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, sql.ErrNoRows

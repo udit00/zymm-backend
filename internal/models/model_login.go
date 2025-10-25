@@ -4,6 +4,7 @@ type LoginUserDataModel struct {
 	UserId      int
 	DisplayName string
 	Password    string
+	RoleId      int
 }
 
 type LoginRequestModel struct {

@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 	bussinessAuth "zymm/internal/business/auth"
+	rolestype "zymm/internal/business/roles/roles_type"
 	"zymm/internal/config"
 	"zymm/internal/db"
 	"zymm/internal/models"
@@ -95,7 +96,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	authRepo.InsertLoginLog(loginLogsModel)
-	generatedJwt, jwtError := bussinessAuth.GenerateJWTToken(loginLogsModel.UserId)
+	generatedJwt, jwtError := bussinessAuth.GenerateJWTToken(loginLogsModel.UserId, userDataModel.RoleId)
 	if jwtError != nil || generatedJwt == nil || *generatedJwt == "" {
 		utils.SendErrorResponse(w, http.StatusInternalServerError, "Error generating JWT token: "+jwtError.Error())
 		return
@@ -141,7 +142,7 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 		UserId:     0,
 		Gender:     req.Gender,
 		ProfilePic: req.DisplayPic,
-		RoleId:     5, // Default role ID for regular users
+		RoleId:     rolestype.RoleMember,
 	})
 
 	if userInsertionError != nil {
@@ -179,7 +180,7 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	authRepo.InsertLoginLog(loginLogsModel)
-	generatedJwt, jwtError := bussinessAuth.GenerateJWTToken(loginLogsModel.UserId)
+	generatedJwt, jwtError := bussinessAuth.GenerateJWTToken(loginLogsModel.UserId, regLog.RoleId)
 	if jwtError != nil || generatedJwt == nil || *generatedJwt == "" {
 		utils.SendErrorResponse(w, http.StatusInternalServerError, "Error generating JWT token: "+jwtError.Error())
 		return
@@ -221,7 +222,7 @@ func ownerRegistrationHandler(w http.ResponseWriter, r *http.Request) {
 		UserId:     0,
 		Gender:     req.Gender,
 		ProfilePic: req.DisplayPic,
-		RoleId:     1,
+		RoleId:     rolestype.RoleOwner,
 	})
 
 	if userInsertionError != nil {
@@ -278,7 +279,7 @@ func ownerRegistrationHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	authRepo.InsertLoginLog(loginLogsModel)
-	generatedJwt, jwtError := bussinessAuth.GenerateJWTToken(loginLogsModel.UserId)
+	generatedJwt, jwtError := bussinessAuth.GenerateJWTToken(loginLogsModel.UserId, regLog.RoleId)
 	if jwtError != nil || generatedJwt == nil || *generatedJwt == "" {
 		utils.SendErrorResponse(w, http.StatusInternalServerError, "Error generating JWT token: "+jwtError.Error())
 		return
