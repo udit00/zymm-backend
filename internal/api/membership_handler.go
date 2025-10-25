@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"time"
 
+	bussinessAuth "zymm/internal/business/auth"
 	businessMembership "zymm/internal/business/membership"
 	"zymm/internal/models"
 	membershipRepo "zymm/internal/repository/membership_repo"
@@ -41,15 +42,14 @@ func upsertMembershipPlan(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// extract user id from context
-	uid := r.Context().Value(ctxUserIDKey)
-	if uid == nil {
+	claims, ok := r.Context().Value(ctxClaimDataKey).(*bussinessAuth.MyCustomClaims)
+	if !ok || claims == nil {
 		utils.SendErrorResponse(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
 
-	currentUserId, ok := uid.(int)
-	if !ok {
+	currentUserId := claims.UserId
+	if currentUserId < 0 {
 		utils.SendErrorResponse(w, http.StatusUnauthorized, "invalid user id in context")
 		return
 	}
@@ -181,15 +181,14 @@ func requestMembershipByUserToGym(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// extract user id from context
-	uid := r.Context().Value(ctxUserIDKey)
-	if uid == nil {
+	claims, ok := r.Context().Value(ctxClaimDataKey).(*bussinessAuth.MyCustomClaims)
+	if !ok || claims == nil {
 		utils.SendErrorResponse(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
 
-	createdBy, ok := uid.(int)
-	if !ok {
+	createdBy := claims.UserId
+	if createdBy < 0 {
 		utils.SendErrorResponse(w, http.StatusUnauthorized, "invalid user id in context")
 		return
 	}
@@ -267,15 +266,14 @@ func userMembershipHistory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// extract user id from context
-	uid := r.Context().Value(ctxUserIDKey)
-	if uid == nil {
+	claims, ok := r.Context().Value(ctxClaimDataKey).(*bussinessAuth.MyCustomClaims)
+	if !ok || claims == nil {
 		utils.SendErrorResponse(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
 
-	currentUserId, ok := uid.(int)
-	if !ok {
+	currentUserId := claims.UserId
+	if currentUserId < 0 {
 		utils.SendErrorResponse(w, http.StatusUnauthorized, "invalid user id in context")
 		return
 	}

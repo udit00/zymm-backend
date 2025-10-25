@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"net/http"
+	bussinessAuth "zymm/internal/business/auth"
 	"zymm/internal/models"
 	authRepo "zymm/internal/repository/auth_repo"
 	membershipRepo "zymm/internal/repository/membership_repo"
@@ -25,38 +26,30 @@ func UserHandlerDelegate(mux *http.ServeMux) {
 
 func getSelfData(w http.ResponseWriter, r *http.Request) {
 	LogService.LogMessage("getSelfData was called")
-	// Extract user id from context (set by AuthMiddleware)
-	uid := r.Context().Value(ctxUserIDKey)
-	if uid == nil {
+
+	claims, ok := r.Context().Value(ctxClaimDataKey).(*bussinessAuth.MyCustomClaims)
+	if !ok || claims == nil {
 		utils.SendErrorResponse(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
 
-	userId, ok := uid.(int)
-	if !ok {
-		// safety: try converting from float64 (jwt numeric) or other numeric types
-		switch v := uid.(type) {
-		case int64:
-			userId = int(v)
-		case float64:
-			userId = int(v)
-		default:
-			utils.SendErrorResponse(w, http.StatusUnauthorized, "invalid user id in context")
-			return
-		}
+	currentUserId := claims.UserId
+	if currentUserId < 0 {
+		utils.SendErrorResponse(w, http.StatusUnauthorized, "invalid user id in context")
+		return
 	}
 
 	var planDetails *models.PlanRecord
 	var planErr error
 
-	userData, err := authRepo.GetUserByUserId(userId)
+	userData, err := authRepo.GetUserByUserId(currentUserId)
 	if err != nil {
 		LogService.LogError("❌ Error fetching user data: ", err)
 		utils.SendErrorResponse(w, http.StatusInternalServerError, "Error fetching user data: "+err.Error())
 		return
 	}
 
-	userActiveMembership, err := membershipRepo.GetUserMembershipByUserId(userId)
+	userActiveMembership, err := membershipRepo.GetUserMembershipByUserId(currentUserId)
 	if err != nil {
 		if err != sql.ErrNoRows {
 			LogService.LogError("❌ Error fetching user active membership data: ", err)
@@ -99,28 +92,19 @@ func getSelfData(w http.ResponseWriter, r *http.Request) {
 
 func getUserContacts(w http.ResponseWriter, r *http.Request) {
 	LogService.LogMessage("getUserContacts was called")
-	// Extract user id from context (set by AuthMiddleware)
-	uid := r.Context().Value(ctxUserIDKey)
-	if uid == nil {
+	claims, ok := r.Context().Value(ctxClaimDataKey).(*bussinessAuth.MyCustomClaims)
+	if !ok || claims == nil {
 		utils.SendErrorResponse(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
 
-	userId, ok := uid.(int)
-	if !ok {
-		// safety: try converting from float64 (jwt numeric) or other numeric types
-		switch v := uid.(type) {
-		case int64:
-			userId = int(v)
-		case float64:
-			userId = int(v)
-		default:
-			utils.SendErrorResponse(w, http.StatusUnauthorized, "invalid user id in context")
-			return
-		}
+	currentUserId := claims.UserId
+	if currentUserId < 0 {
+		utils.SendErrorResponse(w, http.StatusUnauthorized, "invalid user id in context")
+		return
 	}
 
-	utils.SendErrorResponse(w, http.StatusBadRequest, fmt.Sprintf("aogaog with %v", userId))
+	utils.SendErrorResponse(w, http.StatusBadRequest, fmt.Sprintf("aogaog with %v", currentUserId))
 
 	// contacts, err := authRepo.GetContactsByUserId(userId)
 	// if err != nil {

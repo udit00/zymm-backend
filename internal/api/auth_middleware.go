@@ -12,7 +12,7 @@ import (
 
 type ctxKey string
 
-const ctxUserIDKey ctxKey = "userId"
+const ctxClaimDataKey ctxKey = "ctxClaimsKey"
 
 // AuthMiddleware validates Authorization: Bearer <token>, extracts userId from JWT
 // and attaches it to request context under ctxUserIDKey. It uses the project's
@@ -38,9 +38,13 @@ func AuthMiddleware(next http.HandlerFunc) http.HandlerFunc {
 			utils.SendErrorResponse(w, http.StatusUnauthorized, "Invalid or expired auth token")
 			return
 		}
+		if claims == nil {
+			LogService.LogError("AuthMiddleware: token validation failed: claims were not proper structured ", err)
+			utils.SendErrorResponse(w, http.StatusUnauthorized, "Claims were null")
+			return
+		}
 
-		// attach user id to context and call next
-		ctx := context.WithValue(r.Context(), ctxUserIDKey, claims.UserId)
+		ctx := context.WithValue(r.Context(), ctxClaimDataKey, claims)
 		next(w, r.WithContext(ctx))
 	}
 }
