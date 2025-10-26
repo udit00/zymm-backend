@@ -1,16 +1,18 @@
-package rolestype
+package businessRoleType
+
+type RoleType int
 
 // Role IDs (like enum)
 const (
-	RoleOwner   = 1
-	RoleManager = 2
-	RoleStaff   = 3
-	RoleTrainer = 4
-	RoleMember  = 5
+	RoleOwner   RoleType = 1
+	RoleManager RoleType = 2
+	RoleStaff   RoleType = 3
+	RoleTrainer RoleType = 4
+	RoleMember  RoleType = 5
 )
 
 // RoleNames maps role IDs to their short names.
-var RoleNames = map[int]string{
+var RoleNames = map[RoleType]string{
 	RoleOwner:   "owner",
 	RoleManager: "manager",
 	RoleStaff:   "staff",
@@ -19,10 +21,22 @@ var RoleNames = map[int]string{
 }
 
 // RoleDescriptions maps role IDs to detailed descriptions.
-var RoleDescriptions = map[int]string{
+var RoleDescriptions = map[RoleType]string{
 	RoleOwner:   "Owner of the gym",
 	RoleManager: "Manager of the gym with almost all of the rights (less than owner)",
 	RoleStaff:   "Staff of the gym with limited rights (less than manager), usually under a manager",
 	RoleTrainer: "Trainer of the gym with limited rights, client management and scheduling",
 	RoleMember:  "Regular gym member with access to facilities",
+}
+
+func GetRoleTypeFromInt(roleTypeInt int) *RoleType {
+	role := RoleType(roleTypeInt)
+	if _, exists := RoleNames[role]; exists {
+		return &role
+	}
+	return nil
+}
+
+func (r RoleType) Int() int {
+	return int(r)
 }

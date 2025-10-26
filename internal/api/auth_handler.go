@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"strings"
 	bussinessAuth "zymm/internal/business/auth"
-	rolestype "zymm/internal/business/roles/roles_type"
+	businessRoleType "zymm/internal/business/roles/roles_type"
 	"zymm/internal/config"
 	"zymm/internal/db"
 	"zymm/internal/models"
@@ -142,7 +142,7 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 		UserId:     0,
 		Gender:     req.Gender,
 		ProfilePic: req.DisplayPic,
-		RoleId:     rolestype.RoleMember,
+		RoleId:     businessRoleType.RoleMember.Int(),
 	})
 
 	if userInsertionError != nil {
@@ -222,7 +222,7 @@ func ownerRegistrationHandler(w http.ResponseWriter, r *http.Request) {
 		UserId:     0,
 		Gender:     req.Gender,
 		ProfilePic: req.DisplayPic,
-		RoleId:     rolestype.RoleOwner,
+		RoleId:     businessRoleType.RoleOwner.Int(),
 	})
 
 	if userInsertionError != nil {

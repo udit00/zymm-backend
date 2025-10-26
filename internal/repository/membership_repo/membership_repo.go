@@ -2,6 +2,7 @@ package membershipRepo
 
 import (
 	"database/sql"
+	bussinessMembershipRequest "zymm/internal/business/membership/membership_request_action_type"
 	"zymm/internal/db"
 	"zymm/internal/models"
 	LogService "zymm/internal/service/log_service"
@@ -114,6 +115,24 @@ func GetUserMembershipByUserId(userId int) (*models.UserMembership, error) {
 	return membership, nil
 }
 
+func GetUserMembershipByMembershipId(membershipId int) (*models.UserMembership, error) {
+	membership := &models.UserMembership{}
+	err := db.DB.QueryRow(`
+		SELECT membershipId, userId, planId, startDate, endDate, isActive, membershipStatus, createdAt
+		FROM userMemberships
+		WHERE membershipId = @p1`,
+		membershipId).Scan(
+		&membership.MembershipId, &membership.UserId, &membership.PlanId, &membership.StartDate, &membership.EndDate, &membership.IsActive, &membership.MembershipStatus, &membership.CreatedAt)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, sql.ErrNoRows
+		}
+		LogService.LogError("❌ DB error: ", err)
+		return nil, err
+	}
+	return membership, nil
+}
+
 func GetAllMembershipPlansRequestByUserId(userId int, filterBy MembershipStatus) ([]models.UserMembership, error) {
 	var query string
 
@@ -197,6 +216,26 @@ func InsertMembershipRequest(um models.UserMembership) (*int, error) {
 	).Scan(&id)
 	if err != nil {
 		LogService.LogError("❌ DB error inserting userMembership: ", err)
+		return nil, err
+	}
+	return &id, nil
+}
+
+func TakeActionOnMembershipRequest(memberId int, membershipId int, actionTaken bussinessMembershipRequest.ActionType, userId int) (*int, error) {
+	var id int
+	// possible values "A" or "R"
+	var actionTakenString string = "A"
+	if actionTaken == bussinessMembershipRequest.Reject {
+		actionTakenString = "R"
+	}
+	err := db.DB.QueryRow(`
+		INSERT INTO userMembershipsChangesLogs (memberId,  membershipId, changesMade, changedBy, loggedAt)
+		OUTPUT INSERTED.logId
+		VALUES (@p1, @p2, @p3, @p4, getDate())`,
+		memberId, membershipId, actionTakenString, userId,
+	).Scan(&id)
+	if err != nil {
+		LogService.LogError("❌ DB error inserting userMembershipsChangesLogs: ", err)
 		return nil, err
 	}
 	return &id, nil

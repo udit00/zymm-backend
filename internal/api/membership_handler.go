@@ -10,6 +10,9 @@ import (
 
 	bussinessAuth "zymm/internal/business/auth"
 	businessMembership "zymm/internal/business/membership"
+	bussinessMembershipRequest "zymm/internal/business/membership/membership_request_action_type"
+	businessRoles "zymm/internal/business/roles"
+	businessRoleType "zymm/internal/business/roles/roles_type"
 	"zymm/internal/models"
 	membershipRepo "zymm/internal/repository/membership_repo"
 	LogService "zymm/internal/service/log_service"
@@ -27,6 +30,7 @@ func MembershipHandlerDelegate(mux *http.ServeMux) {
 	mux.HandleFunc(membershipRouteAppended("upsertPlan"), AuthMiddleware(upsertMembershipPlan))
 	mux.HandleFunc(membershipRouteAppended("requestPlan"), AuthMiddleware(requestMembershipByUserToGym))
 	mux.HandleFunc(membershipRouteAppended("planHistory"), AuthMiddleware(userMembershipHistory))
+	mux.HandleFunc(membershipRouteAppended("takeActionOnMembership"), AuthMiddleware(takeActionOnMembership))
 }
 
 func upsertMembershipPlan(w http.ResponseWriter, r *http.Request) {
@@ -285,6 +289,81 @@ func userMembershipHistory(w http.ResponseWriter, r *http.Request) {
 	}
 
 	utils.SendSuccessResponse(w, http.StatusOK, memberships)
+}
+
+func takeActionOnMembership(w http.ResponseWriter, r *http.Request) {
+	LogService.LogMessage("takeActionOnMembership was called")
+	if r.Method != http.MethodPost {
+		utils.SendErrorResponse(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
+	var req models.TakeActionOnMembershipRequestModel
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		utils.SendErrorResponse(w, http.StatusBadRequest, "Invalid request payload")
+		return
+	}
+
+	claims, ok := r.Context().Value(ctxClaimDataKey).(*bussinessAuth.MyCustomClaims)
+	if !ok || claims == nil {
+		utils.SendErrorResponse(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+
+	currentUserId := claims.UserId
+	if currentUserId < 0 {
+		utils.SendErrorResponse(w, http.StatusUnauthorized, "invalid user id in context")
+		return
+	}
+
+	rawUserRoleType := businessRoleType.GetRoleTypeFromInt(claims.RoleId)
+	if rawUserRoleType == nil {
+		utils.SendErrorResponse(w, http.StatusUnauthorized, "Role type was null")
+		return
+	}
+
+	userRole := *rawUserRoleType
+	if businessRoles.IsNotAllowedToTakeActionOnMemberships(userRole) {
+		utils.SendErrorResponse(w, http.StatusForbidden, "Access Denied.")
+		return
+	}
+
+	membershipRequestDetails, membershipRequestDetailsErr := membershipRepo.GetUserMembershipByMembershipId(req.MembershipId)
+	if membershipRequestDetailsErr != nil {
+		utils.SendErrorResponse(w, http.StatusBadRequest, "Couldn't get membership data: "+membershipRequestDetailsErr.Error())
+		return
+	}
+	if membershipRequestDetails == nil {
+		utils.SendErrorResponse(w, http.StatusBadRequest, "Couldn't get membership data: data was nil")
+		return
+	}
+
+	var action bussinessMembershipRequest.ActionType = bussinessMembershipRequest.Approve
+	if req.ActionTaken != "A" && req.ActionTaken != "R" {
+		utils.SendErrorResponse(w, http.StatusBadRequest, "Action Type can only be A for Accept or R for reject.")
+		return
+	}
+
+	if req.ActionTaken == "R" {
+		action = bussinessMembershipRequest.Reject
+	}
+	actionTakenId, actionTakingErr := membershipRepo.TakeActionOnMembershipRequest(
+		membershipRequestDetails.UserId,
+		membershipRequestDetails.MembershipId,
+		action,
+		currentUserId,
+	)
+
+	if actionTakingErr != nil {
+		utils.SendErrorResponse(w, http.StatusExpectationFailed, actionTakingErr.Error())
+		return
+	}
+
+	// notify gym member/ gym owner/ gym manager
+	type finalResponse struct {
+		actionTakenId int
+	}
+	utils.SendSuccessResponse(w, http.StatusOK, finalResponse{actionTakenId: *actionTakenId})
 }
 
 func derefString(s *string) string {

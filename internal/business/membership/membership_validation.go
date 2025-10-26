@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	businessRoles "zymm/internal/business/roles"
 	rolestype "zymm/internal/business/roles/roles_type"
 	"zymm/internal/models"
 	authRepo "zymm/internal/repository/auth_repo"
@@ -68,7 +69,12 @@ func ValidateUpsertPlanWithDBChecks(req models.UpsertPlanRequest, userId int) er
 	}
 
 	// 1 is owner and 2 is manager, anyone else shouldn't edit or create plans
-	if userDetails.RoleId > rolestype.RoleManager {
+	roleType := rolestype.GetRoleTypeFromInt(userDetails.RoleId)
+	if roleType == nil {
+		return errors.New("Could not resolve your role, please login again")
+	}
+
+	if businessRoles.IsNotAllowedToManagePlans(*roleType) {
 		return errors.New("Only Owner or Manager of the gym can create or edit plans.")
 	}
 

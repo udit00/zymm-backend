@@ -28,6 +28,7 @@ func main() {
 	api.UserHandlerDelegate(mux)
 	api.AuthHandlerDelegate(mux)
 	api.MembershipHandlerDelegate(mux)
+	api.AttendanceApiPrefixHandlerDelegate(mux)
 
 	log.Println("🚀 Server running on http://localhost:" + config.GetAppPortInString())
 	err := http.ListenAndServe(":"+config.GetAppPortInString(), mux)
