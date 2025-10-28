@@ -129,6 +129,30 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	userExistsWithMobile, userExistsWithMobileErr := authRepo.CheckUserExistsByMobile(req.Mobile)
+	if userExistsWithMobileErr != nil {
+		utils.SendErrorResponse(w, http.StatusExpectationFailed, userExistsWithMobileErr.Error())
+		return
+	}
+
+	if userExistsWithMobile {
+		utils.SendErrorResponse(w, http.StatusExpectationFailed, "User already exists with mobile number "+req.Mobile)
+		return
+	}
+
+	if req.Email != nil {
+		userExistsWithEmail, userExistsWithEmailErr := authRepo.CheckUserExistsByEmail(*req.Email)
+		if userExistsWithEmailErr != nil {
+			utils.SendErrorResponse(w, http.StatusExpectationFailed, userExistsWithEmailErr.Error())
+			return
+		}
+
+		if userExistsWithEmail {
+			utils.SendErrorResponse(w, http.StatusExpectationFailed, "User already exists with email "+*req.Email)
+			return
+		}
+	}
+
 	insertedUserRecord, userInsertionError := authRepo.InsertRegistrationRecord(models.UserRecord{
 		DisplayPic: req.DisplayPic,
 		UserName:   req.DisplayName,
@@ -213,6 +237,30 @@ func ownerRegistrationHandler(w http.ResponseWriter, r *http.Request) {
 	if validationRequestErr != nil {
 		utils.SendErrorResponse(w, http.StatusBadRequest, validationRequestErr.Error())
 		return
+	}
+
+	userExistsWithMobile, userExistsWithMobileErr := authRepo.CheckUserExistsByMobile(req.Mobile)
+	if userExistsWithMobileErr != nil {
+		utils.SendErrorResponse(w, http.StatusExpectationFailed, userExistsWithMobileErr.Error())
+		return
+	}
+
+	if userExistsWithMobile {
+		utils.SendErrorResponse(w, http.StatusExpectationFailed, "User already exists with mobile number "+req.Mobile)
+		return
+	}
+
+	if req.OwnerPersonalEmail != nil {
+		userExistsWithEmail, userExistsWithEmailErr := authRepo.CheckUserExistsByEmail(*req.OwnerPersonalEmail)
+		if userExistsWithEmailErr != nil {
+			utils.SendErrorResponse(w, http.StatusExpectationFailed, userExistsWithEmailErr.Error())
+			return
+		}
+
+		if userExistsWithEmail {
+			utils.SendErrorResponse(w, http.StatusExpectationFailed, "User already exists with email "+*req.OwnerPersonalEmail)
+			return
+		}
 	}
 
 	insertedUserRecord, userInsertionError := authRepo.InsertRegistrationRecord(models.UserRecord{

@@ -141,3 +141,43 @@ func GetGymById(gymId int) (*gymModels.GymRecord, error) {
 	}
 	return gym, nil
 }
+
+func CheckUserExistsByMobile(mobile string) (bool, error) {
+	var exists int
+
+	err := db.DB.QueryRow(`
+		SELECT 
+			CASE 
+				WHEN EXISTS (SELECT 1 FROM users WHERE mobile = @p1)
+					THEN 1 
+				ELSE 0 
+			END`,
+		mobile).Scan(&exists)
+
+	if err != nil {
+		LogService.LogError("❌ DB error: ", err)
+		return false, err
+	}
+
+	return exists == 1, nil
+}
+
+func CheckUserExistsByEmail(email string) (bool, error) {
+	var exists int
+
+	err := db.DB.QueryRow(`
+		SELECT 
+			CASE 
+				WHEN EXISTS (SELECT 1 FROM users WHERE email = @p1)
+					THEN 1 
+				ELSE 0 
+			END`,
+		email).Scan(&exists)
+
+	if err != nil {
+		LogService.LogError("❌ DB error: ", err)
+		return false, err
+	}
+
+	return exists == 1, nil
+}
