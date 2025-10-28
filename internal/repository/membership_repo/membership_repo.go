@@ -240,3 +240,21 @@ func TakeActionOnMembershipRequest(memberId int, membershipId int, actionTaken b
 	}
 	return &id, nil
 }
+
+func UpdateActionTakenOnUserMembership(membershipId int, actionTaken bussinessMembershipRequest.ActionType) error {
+	var actionTakenString string = "A"
+	if actionTaken == bussinessMembershipRequest.Reject {
+		actionTakenString = "R"
+	}
+	_, err := db.DB.Exec(`
+		UPDATE userMemberships SET membershipStatus = @p1
+		WHERE membershipId = @p2`,
+		actionTakenString,
+		membershipId,
+	)
+	if err != nil {
+		LogService.LogError("❌ DB error: ", err)
+		return err
+	}
+	return nil
+}

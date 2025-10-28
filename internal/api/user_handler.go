@@ -82,6 +82,7 @@ func getSelfData(w http.ResponseWriter, r *http.Request) {
 	if planDetails != nil {
 		selfDataResponse.PlanId = &planDetails.PlanId
 		selfDataResponse.GymId = planDetails.GymId
+		selfDataResponse.PlanDetails = planDetails
 	}
 	if userActiveMembership != nil {
 		selfDataResponse.MembershipId = &userActiveMembership.MembershipId

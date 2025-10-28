@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"zymm/internal/config"
 
 	_ "github.com/denisenkom/go-mssqldb"
 )
@@ -12,9 +13,18 @@ import (
 var DB *sql.DB
 
 func InitDB() {
+
+	envWiseHost := "DB_HOST"
+	envWisePass := "DB_PASS"
+
+	if config.IsProduction() {
+		envWiseHost = "LIVE_DB_HOST"
+		envWisePass = "LIVE_DB_PASS"
+	}
+
 	user := "sa"
-	pass := os.Getenv("DB_PASS")
-	host := os.Getenv("DB_HOST")
+	pass := os.Getenv(envWisePass)
+	host := os.Getenv(envWiseHost)
 	port := os.Getenv("DB_PORT")
 	name := os.Getenv("DB_NAME")
 

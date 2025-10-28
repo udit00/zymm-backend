@@ -149,22 +149,6 @@ func getAllAttendanceForUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	queryParams := r.URL.Query()
-	userIdRawStr := queryParams.Get("userId")
-
-	userIdConverted := utils.ConvertStringToInt(userIdRawStr)
-	if userIdConverted == nil {
-		utils.SendErrorResponse(w, http.StatusBadRequest, "Request was not proper.")
-		return
-	}
-
-	userId := *userIdConverted
-
-	if userId <= 0 {
-		utils.SendErrorResponse(w, http.StatusBadRequest, "Request was not proper.")
-		return
-	}
-
 	claims, ok := r.Context().Value(ctxClaimDataKey).(*bussinessAuth.MyCustomClaims)
 	if !ok || claims == nil {
 		utils.SendErrorResponse(w, http.StatusUnauthorized, "unauthorized")
@@ -174,6 +158,23 @@ func getAllAttendanceForUser(w http.ResponseWriter, r *http.Request) {
 	currentUserId := claims.UserId
 	if currentUserId < 0 {
 		utils.SendErrorResponse(w, http.StatusUnauthorized, "invalid user id in context")
+		return
+	}
+
+	queryParams := r.URL.Query()
+	userIdRawStr := queryParams.Get("userId")
+
+	userIdConverted := utils.ConvertStringToInt(userIdRawStr)
+	if userIdConverted == nil {
+		// utils.SendErrorResponse(w, http.StatusBadRequest, "Request was not proper.")
+		// return
+		userIdConverted = &currentUserId
+	}
+
+	userId := *userIdConverted
+
+	if userId <= 0 {
+		utils.SendErrorResponse(w, http.StatusBadRequest, "Request was not proper.")
 		return
 	}
 

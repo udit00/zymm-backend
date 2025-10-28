@@ -1,6 +1,8 @@
 package models
 
-import "time"
+import (
+	"time"
+)
 
 type UserRecord struct {
 	UserId     int
@@ -39,4 +41,5 @@ type SelfDataResponse struct {
 	GymId                   *int            `json:"gymId"`
 	ActiveMembershipDetails *UserMembership `json:"activeMembershipDetails"`
 	VisitedToday            bool            `json:"visitedToday"`
+	PlanDetails             *PlanRecord     `json:"planDetails"`
 }

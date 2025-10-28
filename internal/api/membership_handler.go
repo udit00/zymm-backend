@@ -359,6 +359,16 @@ func takeActionOnMembership(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	updateMembershipOfTheUserErr := membershipRepo.UpdateActionTakenOnUserMembership(
+		membershipRequestDetails.MembershipId,
+		action,
+	)
+
+	if updateMembershipOfTheUserErr != nil {
+		utils.SendErrorResponse(w, http.StatusExpectationFailed, updateMembershipOfTheUserErr.Error())
+		return
+	}
+
 	// notify gym member/ gym owner/ gym manager
 	type finalResponse struct {
 		actionTakenId int

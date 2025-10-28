@@ -7,7 +7,6 @@ import (
 	"strings"
 	bussinessAuth "zymm/internal/business/auth"
 	businessRoleType "zymm/internal/business/roles/roles_type"
-	"zymm/internal/config"
 	"zymm/internal/db"
 	"zymm/internal/models"
 	gymModels "zymm/internal/models/gym_models"
@@ -31,28 +30,24 @@ func AuthHandlerDelegate(mux *http.ServeMux) {
 }
 
 func getAuthTokenData(w http.ResponseWriter, r *http.Request) {
-	if config.IsDebug() {
-		authHeader := r.Header.Get("Authorization")
-		if authHeader == "" {
-			utils.SendErrorResponse(w, http.StatusUnauthorized, "Missing Authorization header")
-			return
-		}
-		if !strings.HasPrefix(authHeader, "Bearer ") {
-			utils.SendErrorResponse(w, http.StatusUnauthorized, "Invalid Authorization header")
-			return
-		}
-
-		token := strings.TrimSpace(strings.TrimPrefix(authHeader, "Bearer "))
-		claims, err := bussinessAuth.GetDataFromJWTToken(token)
-		if err != nil {
-			LogService.LogError("AuthMiddleware: token validation failed: ", err)
-			utils.SendErrorResponse(w, http.StatusUnauthorized, "Invalid or expired auth token")
-			return
-		}
-		utils.SendSuccessResponse(w, http.StatusOK, claims)
-	} else {
-		utils.SendErrorResponse(w, http.StatusForbidden, "What are you doing here?")
+	authHeader := r.Header.Get("Authorization")
+	if authHeader == "" {
+		utils.SendErrorResponse(w, http.StatusUnauthorized, "Missing Authorization header")
+		return
 	}
+	if !strings.HasPrefix(authHeader, "Bearer ") {
+		utils.SendErrorResponse(w, http.StatusUnauthorized, "Invalid Authorization header")
+		return
+	}
+
+	token := strings.TrimSpace(strings.TrimPrefix(authHeader, "Bearer "))
+	claims, err := bussinessAuth.GetDataFromJWTToken(token)
+	if err != nil {
+		LogService.LogError("AuthMiddleware: token validation failed: ", err)
+		utils.SendErrorResponse(w, http.StatusUnauthorized, "Invalid or expired auth token")
+		return
+	}
+	utils.SendSuccessResponse(w, http.StatusOK, claims)
 }
 
 func loginHandler(w http.ResponseWriter, r *http.Request) {
@@ -115,6 +110,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func registerHandler(w http.ResponseWriter, r *http.Request) {
+	LogService.LogMessage("registerHandler was called")
 	if r.Method != http.MethodPost {
 		utils.SendErrorResponse(w, http.StatusMethodNotAllowed, "Method not allowed")
 		return
@@ -183,6 +179,12 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 	generatedJwt, jwtError := bussinessAuth.GenerateJWTToken(loginLogsModel.UserId, regLog.RoleId)
 	if jwtError != nil || generatedJwt == nil || *generatedJwt == "" {
 		utils.SendErrorResponse(w, http.StatusInternalServerError, "Error generating JWT token: "+jwtError.Error())
+		return
+	}
+
+	updateAuthTokenErr := authRepo.UpdateLoginAuthToken(insertedUserRecord.UserId, *generatedJwt)
+	if updateAuthTokenErr != nil {
+		utils.SendErrorResponse(w, http.StatusBadRequest, updateAuthTokenErr.Error())
 		return
 	}
 
