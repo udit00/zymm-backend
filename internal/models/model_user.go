@@ -16,6 +16,7 @@ type UserRecord struct {
 	CreatedAt  time.Time
 	UpdatedAt  *time.Time
 	RoleId     int
+	IsActive   bool
 }
 
 type LoginLogsRecord struct {
@@ -42,4 +43,17 @@ type SelfDataResponse struct {
 	ActiveMembershipDetails *UserMembership `json:"activeMembershipDetails"`
 	VisitedToday            bool            `json:"visitedToday"`
 	PlanDetails             *PlanRecord     `json:"planDetails"`
+}
+
+type ChangePasswordRequestModel struct {
+	OldPassword string `json:"oldPassword"`
+	NewPassword string `json:"newPassword"`
+}
+
+type ChangePasswordResponseModel struct {
+	AuthToken string `json:"authToken"`
+}
+
+type DeleteProfileRequestModel struct {
+	Password string `json:"password"`
 }

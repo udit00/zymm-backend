@@ -344,7 +344,7 @@ func GetGymWithAdditionalDataByGymId(gymId int) (*gymModels.GymRecordWithAdditio
 			WHERE e.gymId = g.gymId
 		) empCounts
 		outer apply (Select count(*) as cnt from plans where gymId = g.gymId and isActive = 1) activePlans
-		where g.gymId = 1`, gymId).Scan(
+		where g.gymId = @p1`, gymId).Scan(
 		&gym.GymId,
 		&gym.GymName,
 		&gym.State,
@@ -372,4 +372,97 @@ func GetGymWithAdditionalDataByGymId(gymId int) (*gymModels.GymRecordWithAdditio
 		return nil, err
 	}
 	return gym, nil
+}
+
+func GetGymWithAdditionalDataByOwnerId(userId int) (*gymModels.GymRecordWithAdditionalData, error) {
+	gym := &gymModels.GymRecordWithAdditionalData{}
+	err := db.DB.QueryRow(`
+		SELECT gymId, gymName, state, city, gymAddress, contactNo, officialEmail, createdBy, createdAt, updatedAt, locationLat, locationLong, 
+		isnull(ratingData.averageRating, 0) as averageRating, isnull(ratingData.totalFeedbacks, 0) as totalFeedbacks, isnull(empCounts.trainersCount, 0) as trainersCount, 
+		isnull(empCounts.staffCount, 0) as staffCount, isnull(empCounts.managersCount, 0) as managersCount, isnull(activePlans.cnt, 0) as activePlansCount
+		FROM gym g
+		outer apply (SELECT AVG(rating) AS averageRating, COUNT(*) AS totalFeedbacks FROM feedback where gymId = g.gymId) ratingData
+		OUTER APPLY (
+			SELECT 
+				SUM(CASE WHEN u.roleId = 4 THEN 1 ELSE 0 END) AS trainersCount,
+				SUM(CASE WHEN u.roleId = 3 THEN 1 ELSE 0 END) AS staffCount,
+				SUM(CASE WHEN u.roleId = 2 THEN 1 ELSE 0 END) AS managersCount
+			FROM employees e
+			INNER JOIN users u ON u.userId = e.userId
+			WHERE e.gymId = g.gymId
+		) empCounts
+		outer apply (Select count(*) as cnt from plans where gymId = g.gymId and isActive = 1) activePlans
+		where g.createdBy = @p1`, userId).Scan(
+		&gym.GymId,
+		&gym.GymName,
+		&gym.State,
+		&gym.City,
+		&gym.GymAddress,
+		&gym.ContactNo,
+		&gym.OfficialEmail,
+		&gym.CreatedBy,
+		&gym.CreatedAt,
+		&gym.UpdatedAt,
+		&gym.LocationLat,
+		&gym.LocationLong,
+		&gym.AverageRating,
+		&gym.TotalFeedback,
+		&gym.TrainersCount,
+		&gym.StaffCount,
+		&gym.ManagersCount,
+		&gym.ActivePlans,
+	)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, sql.ErrNoRows
+		}
+		LogService.LogError("❌ DB error: ", err)
+		return nil, err
+	}
+	return gym, nil
+}
+
+func GetGymOwnerAndManagers(gymId int) ([]int, error) {
+
+	query := `select u.userId
+		from users u 
+		inner join employees e on e.userId = u.userId
+		where e.gymId = @p1
+		and u.roleId = 2
+		union 
+		select u.userId
+		from gym g 
+		inner join users u on u.userId = g.createdBy
+		where g.gymId = @p1`
+	rows, err := db.DB.Query(query, gymId)
+	if err != nil {
+		LogService.LogError("❌ DB query error: ", err)
+		return nil, err
+	}
+	defer rows.Close()
+
+	var allUsers []int
+
+	for rows.Next() {
+		var currentUser int
+		err := rows.Scan(
+			&currentUser,
+		)
+		if err != nil {
+			LogService.LogError("❌ DB scan error: ", err)
+			return nil, err
+		}
+		allUsers = append(allUsers, currentUser)
+	}
+
+	if err = rows.Err(); err != nil {
+		LogService.LogError("❌ DB rows error: ", err)
+		return nil, err
+	}
+
+	if len(allUsers) == 0 {
+		return []int{}, nil
+	}
+
+	return allUsers, nil
 }

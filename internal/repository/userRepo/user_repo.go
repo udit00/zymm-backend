@@ -9,7 +9,13 @@ import (
 
 func GetUserDataByEmailOrMobile(emailOrMobile string) (*models.LoginUserDataModel, error) {
 	var userData models.LoginUserDataModel
-	err := db.DB.QueryRow("SELECT userId,userName,userPass,roleId FROM users WHERE email = @p1 or mobile = @p2", emailOrMobile, emailOrMobile).Scan(&userData.UserId, &userData.DisplayName, &userData.Password, &userData.RoleId)
+	err := db.DB.QueryRow(`
+		SELECT userId,userName,userPass,roleId 
+		FROM users 
+		WHERE email = @p1 or mobile = @p2
+		and isActive = 1
+		`,
+		emailOrMobile, emailOrMobile).Scan(&userData.UserId, &userData.DisplayName, &userData.Password, &userData.RoleId)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, sql.ErrNoRows
@@ -20,30 +26,32 @@ func GetUserDataByEmailOrMobile(emailOrMobile string) (*models.LoginUserDataMode
 	return &userData, nil
 }
 
-func GetUserByEmailOrMobile(emailOrMobile string) (*models.UserRecord, error) {
-	user := &models.UserRecord{}
-	err := db.DB.QueryRow(`
-		SELECT userId, userName, gender, mobile, email, profilePic, roleId, createdAt, updatedAt
-		FROM users
-		WHERE email = @p1 OR mobile = @p2`,
-		emailOrMobile, emailOrMobile).Scan(
-		&user.UserId, &user.UserName, &user.Gender, &user.Mobile, &user.Email, &user.ProfilePic, &user.RoleId, &user.CreatedAt, &user.UpdatedAt)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return nil, sql.ErrNoRows
-		}
-		LogService.LogError("❌ DB error: ", err)
-		return nil, err
-	}
-	return user, nil
-}
+// func GetUserByEmailOrMobile(emailOrMobile string) (*models.UserRecord, error) {
+// 	user := &models.UserRecord{}
+// 	err := db.DB.QueryRow(`
+// 		SELECT userId, userName, gender, mobile, email, profilePic, roleId, createdAt, updatedAt
+// 		FROM users
+// 		WHERE email = @p1 OR mobile = @p2`,
+// 		emailOrMobile, emailOrMobile).Scan(
+// 		&user.UserId, &user.UserName, &user.Gender, &user.Mobile, &user.Email, &user.ProfilePic, &user.RoleId, &user.CreatedAt, &user.UpdatedAt)
+// 	if err != nil {
+// 		if err == sql.ErrNoRows {
+// 			return nil, sql.ErrNoRows
+// 		}
+// 		LogService.LogError("❌ DB error: ", err)
+// 		return nil, err
+// 	}
+// 	return user, nil
+// }
 
 func GetUserByUserId(userId int) (*models.UserRecord, error) {
 	user := &models.UserRecord{}
 	err := db.DB.QueryRow(`
 		SELECT userId, userName, gender, mobile, email, profilePic, roleId, createdAt, updatedAt
 		FROM users
-		WHERE userId = @p1`,
+		WHERE userId = @p1
+		and isActive = 1
+		`,
 		userId).Scan(
 		&user.UserId, &user.UserName, &user.Gender, &user.Mobile, &user.Email, &user.ProfilePic, &user.RoleId, &user.CreatedAt, &user.UpdatedAt)
 	if err != nil {
@@ -62,7 +70,7 @@ func CheckUserExistsByMobile(mobile string) (bool, error) {
 	err := db.DB.QueryRow(`
 		SELECT 
 			CASE 
-				WHEN EXISTS (SELECT 1 FROM users WHERE mobile = @p1)
+				WHEN EXISTS (SELECT 1 FROM users WHERE mobile = @p1 and isActive = 1)
 					THEN 1 
 				ELSE 0 
 			END`,
@@ -82,7 +90,7 @@ func CheckUserExistsByEmail(email string) (bool, error) {
 	err := db.DB.QueryRow(`
 		SELECT 
 			CASE 
-				WHEN EXISTS (SELECT 1 FROM users WHERE email = @p1)
+				WHEN EXISTS (SELECT 1 FROM users WHERE email = @p1 and isActive = 1)
 					THEN 1 
 				ELSE 0 
 			END`,

@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"strconv"
 	"time"
@@ -14,7 +15,10 @@ import (
 	businessRoles "zymm/internal/business/roles"
 	businessRoleType "zymm/internal/business/roles/roles_type"
 	"zymm/internal/models"
+	employeesRepo "zymm/internal/repository/employees_repo"
+	gymRepo "zymm/internal/repository/gym_repo"
 	membershipRepo "zymm/internal/repository/membership_repo"
+	notificationRepo "zymm/internal/repository/notification_repo"
 	LogService "zymm/internal/service/log_service"
 	"zymm/utils"
 )
@@ -30,7 +34,11 @@ func MembershipHandlerDelegate(mux *http.ServeMux) {
 	mux.HandleFunc(membershipRouteAppended("upsertPlan"), AuthMiddleware(upsertMembershipPlan))
 	mux.HandleFunc(membershipRouteAppended("requestPlan"), AuthMiddleware(requestMembershipByUserToGym))
 	mux.HandleFunc(membershipRouteAppended("planHistory"), AuthMiddleware(userMembershipHistory))
+	mux.HandleFunc(membershipRouteAppended("getAllMemberships"), AuthMiddleware(allMembershipHistoryForGymOwnerAndManagers))
 	mux.HandleFunc(membershipRouteAppended("takeActionOnMembership"), AuthMiddleware(takeActionOnMembership))
+	mux.HandleFunc(membershipRouteAppended("getPlanDetails"), AuthMiddleware(getPlanDetails))
+	mux.HandleFunc(membershipRouteAppended("getAllPlansByGymId"), AuthMiddleware(getAllPlansByGymId))
+	mux.HandleFunc(membershipRouteAppended("cancelMembershipRequest"), AuthMiddleware(cancelMembershipRequestByUserToGym))
 }
 
 func upsertMembershipPlan(w http.ResponseWriter, r *http.Request) {
@@ -236,10 +244,11 @@ func requestMembershipByUserToGym(w http.ResponseWriter, r *http.Request) {
 			return
 		} else {
 			fmt.Println("❌ Current time is outside the range")
-			insertMembership(w, createdBy, planDetails.PlanId, planDetails.PlanDuration)
+			insertMembership(w, createdBy, planDetails.PlanId, *planDetails.GymId, planDetails.PlanDuration)
+
 		}
 	} else if userMembershipError == sql.ErrNoRows {
-		insertMembership(w, createdBy, planDetails.PlanId, planDetails.PlanDuration)
+		insertMembership(w, createdBy, planDetails.PlanId, *planDetails.GymId, planDetails.PlanDuration)
 	} else {
 		utils.SendErrorResponse(w, http.StatusBadRequest, userMembershipError.Error())
 		return
@@ -247,7 +256,62 @@ func requestMembershipByUserToGym(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func insertMembership(w http.ResponseWriter, createdBy int, planId int, planDuration int) {
+func cancelMembershipRequestByUserToGym(w http.ResponseWriter, r *http.Request) {
+	LogService.LogMessage("cancelMembershipRequestByUserToGym was called")
+	if r.Method != http.MethodPost {
+		utils.SendErrorResponse(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
+	var req models.CancelRequestMembershipModel
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		utils.SendErrorResponse(w, http.StatusBadRequest, "Invalid request payload")
+		return
+	}
+
+	claims, ok := r.Context().Value(ctxClaimDataKey).(*bussinessAuth.MyCustomClaims)
+	if !ok || claims == nil {
+		utils.SendErrorResponse(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+
+	createdBy := claims.UserId
+	if createdBy < 0 {
+		utils.SendErrorResponse(w, http.StatusUnauthorized, "invalid user id in context")
+		return
+	}
+
+	membershipDetails, membershipDetailsErr := membershipRepo.GetUserMembershipByMembershipId(req.MembershipId)
+	if membershipDetailsErr != nil {
+		utils.SendErrorResponse(w, http.StatusBadRequest, membershipDetailsErr.Error())
+		return
+	}
+
+	if membershipDetails == nil {
+		utils.SendErrorResponse(w, http.StatusBadRequest, "No data found. Please try again later.")
+		return
+	}
+
+	if membershipDetails.UserId != createdBy {
+		utils.SendErrorResponse(w, http.StatusUnauthorized, "Access Denied")
+		return
+	}
+
+	if membershipDetails.IsActive {
+		cancelMembershipRequestErr := membershipRepo.CancelMembershipRequest(membershipDetails.MembershipId)
+		if cancelMembershipRequestErr != nil {
+			utils.SendErrorResponse(w, http.StatusBadRequest, cancelMembershipRequestErr.Error())
+			return
+		}
+		utils.SendSuccessResponse(w, http.StatusAccepted, nil)
+	} else {
+		utils.SendErrorResponse(w, http.StatusBadRequest, "Request is already cancelled.")
+		return
+	}
+
+}
+
+func insertMembership(w http.ResponseWriter, createdBy int, gymId int, planId int, planDuration int) {
 	umRequest := models.UserMembership{
 		UserId:           createdBy,
 		PlanId:           planId,
@@ -262,6 +326,15 @@ func insertMembership(w http.ResponseWriter, createdBy int, planId int, planDura
 		return
 	}
 	if memberShipId != nil && *memberShipId > 0 {
+		go func(gymId int, userId int) {
+			defer func() {
+				if r := recover(); r != nil {
+					log.Printf("Recovered in SendNotificationForMembershipRequested: %v", r)
+				}
+			}()
+
+			notificationRepo.SendNotificationForMembershipRequested(gymId, userId)
+		}(gymId, umRequest.UserId)
 		utils.SendSuccessResponse(w, http.StatusAccepted, "Request ID: "+strconv.Itoa((*memberShipId))+" has been generated, wait for the gym staff to approve it.")
 	} else {
 		utils.SendErrorResponse(w, http.StatusBadRequest, "Something went wrong, please try again later.")
@@ -287,13 +360,209 @@ func userMembershipHistory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	memberships, membershipHistoryErr := membershipRepo.GetAllMembershipPlansRequestByUserId(currentUserId, membershipRepo.All)
+	filterByStr := r.URL.Query().Get("filterBy")
+	if filterByStr == "" {
+		utils.SendErrorResponse(w, http.StatusBadRequest, "filterBy is required")
+		return
+	}
+
+	if filterByStr != "P" && filterByStr != "A" && filterByStr != "R" && filterByStr != "ALL" {
+		utils.SendErrorResponse(w, http.StatusBadRequest, "filterBy can only be [P,R,A,ALL], not "+filterByStr)
+		return
+	}
+
+	var filterType membershipRepo.MembershipStatus = membershipRepo.All
+
+	switch filterByStr {
+	case "P":
+		filterType = membershipRepo.Pending
+	case "A":
+		filterType = membershipRepo.Approved
+	case "R":
+		filterType = membershipRepo.Rejected
+	default:
+		filterType = membershipRepo.All
+	}
+
+	memberships, membershipHistoryErr := membershipRepo.GetAllMembershipPlansRequestByUserId(currentUserId, filterType)
 	if membershipHistoryErr != nil {
 		utils.SendErrorResponse(w, http.StatusBadRequest, membershipHistoryErr.Error())
 		return
 	}
 
 	utils.SendSuccessResponse(w, http.StatusOK, memberships)
+}
+
+func allMembershipHistoryForGymOwnerAndManagers(w http.ResponseWriter, r *http.Request) {
+	LogService.LogMessage("allMembershipHistoryForGymOwnerAndManagers was called")
+	if r.Method != http.MethodGet {
+		utils.SendErrorResponse(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
+	claims, ok := r.Context().Value(ctxClaimDataKey).(*bussinessAuth.MyCustomClaims)
+	if !ok || claims == nil {
+		utils.SendErrorResponse(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+
+	currentUserId := claims.UserId
+	if currentUserId < 0 {
+		utils.SendErrorResponse(w, http.StatusUnauthorized, "invalid user id in context")
+		return
+	}
+
+	if businessRoles.IsNotAllowedToTakeActionOnMemberships(businessRoleType.RoleType(claims.RoleId)) {
+		utils.SendErrorResponse(w, http.StatusUnauthorized, "Access Denied")
+		return
+	}
+
+	filterByStr := r.URL.Query().Get("filterBy")
+	if filterByStr == "" {
+		utils.SendErrorResponse(w, http.StatusBadRequest, "filterBy is required")
+		return
+	}
+
+	if filterByStr != "P" && filterByStr != "A" && filterByStr != "R" && filterByStr != "ALL" {
+		utils.SendErrorResponse(w, http.StatusBadRequest, "filterBy can only be [P,R,A,ALL], not "+filterByStr)
+		return
+	}
+
+	roleTypePtr := businessRoleType.GetRoleTypeFromInt(claims.RoleId)
+	if roleTypePtr == nil {
+		utils.SendErrorResponse(w, http.StatusUnauthorized, "Access Denied")
+		return
+	}
+
+	roleType := *roleTypePtr
+
+	if roleType != businessRoleType.RoleOwner && roleType != businessRoleType.RoleManager {
+		utils.SendErrorResponse(w, http.StatusUnauthorized, "Access Denied.")
+		return
+	}
+
+	var gymId int
+	if roleType == businessRoleType.RoleOwner {
+		gymDetails, gymDetailsErr := gymRepo.GetGymWithAdditionalDataByOwnerId(claims.UserId)
+		if gymDetailsErr != nil {
+			utils.SendErrorResponse(w, http.StatusInternalServerError, gymDetailsErr.Error())
+			return
+		}
+		gymId = gymDetails.GymId
+	} else {
+		employeeDetails, employeeDetailsErr := employeesRepo.GetEmployeeByUserId(claims.UserId)
+		if employeeDetailsErr != nil {
+			utils.SendErrorResponse(w, http.StatusInternalServerError, employeeDetailsErr.Error())
+			return
+		}
+		gymId = employeeDetails.GymId
+	}
+
+	if gymId <= 0 {
+		utils.SendErrorResponse(w, http.StatusExpectationFailed, "Gym Id not found for the user.")
+		return
+	}
+
+	var filterType membershipRepo.MembershipStatus = membershipRepo.All
+
+	switch filterByStr {
+	case "P":
+		filterType = membershipRepo.Pending
+	case "A":
+		filterType = membershipRepo.Approved
+	case "R":
+		filterType = membershipRepo.Rejected
+	default:
+		filterType = membershipRepo.All
+	}
+
+	memberships, membershipHistoryErr := membershipRepo.GetAllMembershipPlansRequest(gymId, filterType)
+	if membershipHistoryErr != nil {
+		utils.SendErrorResponse(w, http.StatusBadRequest, membershipHistoryErr.Error())
+		return
+	}
+
+	utils.SendSuccessResponse(w, http.StatusOK, memberships)
+}
+
+func getAllPlansByGymId(w http.ResponseWriter, r *http.Request) {
+	LogService.LogMessage("getAllPlansByGymId was called")
+	if r.Method != http.MethodGet {
+		utils.SendErrorResponse(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
+	claims, ok := r.Context().Value(ctxClaimDataKey).(*bussinessAuth.MyCustomClaims)
+	if !ok || claims == nil {
+		utils.SendErrorResponse(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+
+	currentUserId := claims.UserId
+	if currentUserId < 0 {
+		utils.SendErrorResponse(w, http.StatusUnauthorized, "invalid user id in context")
+		return
+	}
+
+	gymIdStr := r.URL.Query().Get("gymId")
+	if gymIdStr == "" {
+		utils.SendErrorResponse(w, http.StatusBadRequest, "gymId is required")
+		return
+	}
+
+	gymId, err := strconv.Atoi(gymIdStr)
+	if err != nil {
+		utils.SendErrorResponse(w, http.StatusBadRequest, "Invalid gymId")
+		return
+	}
+
+	planDetails, planDetailsErr := membershipRepo.GetPlansByGymId(gymId)
+	if planDetailsErr != nil {
+		utils.SendErrorResponse(w, http.StatusBadRequest, planDetailsErr.Error())
+		return
+	}
+
+	utils.SendSuccessResponse(w, http.StatusOK, planDetails)
+}
+
+func getPlanDetails(w http.ResponseWriter, r *http.Request) {
+	LogService.LogMessage("getPlanDetails was called")
+	if r.Method != http.MethodGet {
+		utils.SendErrorResponse(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
+	claims, ok := r.Context().Value(ctxClaimDataKey).(*bussinessAuth.MyCustomClaims)
+	if !ok || claims == nil {
+		utils.SendErrorResponse(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+
+	currentUserId := claims.UserId
+	if currentUserId < 0 {
+		utils.SendErrorResponse(w, http.StatusUnauthorized, "invalid user id in context")
+		return
+	}
+
+	planIdStr := r.URL.Query().Get("planId")
+	if planIdStr == "" {
+		utils.SendErrorResponse(w, http.StatusBadRequest, "planId is required")
+		return
+	}
+
+	planId, err := strconv.Atoi(planIdStr)
+	if err != nil {
+		utils.SendErrorResponse(w, http.StatusBadRequest, "Invalid planId")
+		return
+	}
+
+	planDetails, planDetailsErr := membershipRepo.GetPlanById(planId)
+	if planDetailsErr != nil {
+		utils.SendErrorResponse(w, http.StatusBadRequest, planDetailsErr.Error())
+		return
+	}
+
+	utils.SendSuccessResponse(w, http.StatusOK, planDetails)
 }
 
 func takeActionOnMembership(w http.ResponseWriter, r *http.Request) {
@@ -335,11 +604,22 @@ func takeActionOnMembership(w http.ResponseWriter, r *http.Request) {
 
 	membershipRequestDetails, membershipRequestDetailsErr := membershipRepo.GetUserMembershipByMembershipId(req.MembershipId)
 	if membershipRequestDetailsErr != nil {
-		utils.SendErrorResponse(w, http.StatusBadRequest, "Couldn't get membership data: "+membershipRequestDetailsErr.Error())
+		utils.SendErrorResponse(w, http.StatusExpectationFailed, "Couldn't get membership data: "+membershipRequestDetailsErr.Error())
 		return
 	}
 	if membershipRequestDetails == nil {
-		utils.SendErrorResponse(w, http.StatusBadRequest, "Couldn't get membership data: data was nil")
+		utils.SendErrorResponse(w, http.StatusExpectationFailed, "Couldn't get membership data: data was nil")
+		return
+	}
+
+	planDetails, planDetailErr := membershipRepo.GetPlanById(membershipRequestDetails.PlanId)
+	if planDetailErr != nil {
+		utils.SendErrorResponse(w, http.StatusExpectationFailed, "Couldn't get plan data: "+planDetailErr.Error())
+		return
+	}
+
+	if planDetails == nil {
+		utils.SendErrorResponse(w, http.StatusExpectationFailed, "Couldn't get planDetails data: data was nil")
 		return
 	}
 
@@ -374,7 +654,15 @@ func takeActionOnMembership(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// notify gym member/ gym owner/ gym manager
+	go func(nById int, nForId int, pd models.PlanRecord, act bussinessMembershipRequest.ActionType) {
+		defer func() {
+			if r := recover(); r != nil {
+				log.Printf("Recovered in SendNotificationForMembershipResponse: %v", r)
+			}
+		}()
+		notificationRepo.SendNotificationForMembershipResponseTakenByGymOwnerManagers(nById, nForId, pd, act)
+	}(currentUserId, membershipRequestDetails.UserId, *planDetails, action)
+
 	type finalResponse struct {
 		actionTakenId int
 	}

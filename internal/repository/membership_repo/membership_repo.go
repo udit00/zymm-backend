@@ -8,19 +8,17 @@ import (
 	LogService "zymm/internal/service/log_service"
 )
 
-type MembershipStatus int
+type MembershipStatus string
 
 const (
-	Pending MembershipStatus = iota
-	Rejected
-	Approved
-	All
+	Pending  MembershipStatus = "P"
+	Rejected MembershipStatus = "R"
+	Approved MembershipStatus = "A"
+	All      MembershipStatus = "ALL"
 )
 
-// InsertPlan inserts a plan row and returns the newly created id
 func InsertPlan(p models.PlanRecord) (*int, error) {
 	var id int
-	// Use OUTPUT INSERTED.planId to get the inserted id
 	err := db.DB.QueryRow(`
         INSERT INTO plans (planBanner, planName, planDesc, planPrice, planDuration, isActive, createdBy, gymId)
         OUTPUT INSERTED.planId
@@ -60,7 +58,6 @@ func UpdatePlan(newPlanDetails models.PlanRecord) error {
 	return nil
 }
 
-// InsertPlanChangeLog inserts a row into planChangesLogs
 func InsertPlanChangeLog(log models.PlanChangeLog) (*int, error) {
 	var id int
 	err := db.DB.QueryRow(`
@@ -92,6 +89,43 @@ func GetPlanById(planId int) (*models.PlanRecord, error) {
 		return nil, err
 	}
 	return plan, nil
+}
+
+func GetPlansByGymId(gymId int) ([]models.PlanRecord, error) {
+	rows, err := db.DB.Query(`
+		SELECT planId, planBanner, planName, planDesc, planPrice, planDuration, isActive, createdBy, createdAt, gymId
+		FROM plans
+		WHERE gymId = @p1`,
+		gymId)
+
+	if err != nil {
+		LogService.LogError("❌ DB error during query execution: ", err)
+		return nil, err
+	}
+	defer rows.Close()
+
+	plans := []models.PlanRecord{}
+
+	for rows.Next() {
+		plan := models.PlanRecord{}
+
+		err := rows.Scan(
+			&plan.PlanId, &plan.PlanBanner, &plan.PlanName, &plan.PlanDesc, &plan.PlanPrice, &plan.PlanDuration, &plan.IsActive, &plan.CreatedBy, &plan.CreatedAt, &plan.GymId)
+
+		if err != nil {
+			LogService.LogError("❌ DB error during row scan: ", err)
+			return nil, err
+		}
+
+		plans = append(plans, plan)
+	}
+
+	if err := rows.Err(); err != nil {
+		LogService.LogError("❌ DB error after rows iteration: ", err)
+		return nil, err
+	}
+
+	return plans, nil
 }
 
 func GetUserMembershipByUserId(userId int) (*models.UserMembership, error) {
@@ -162,7 +196,7 @@ func GetAllMembershipPlansRequestByUserId(userId int, filterBy MembershipStatus)
 			FROM userMemberships
 			WHERE userId = @p1
 			AND isActive = 1
-			and membershipStatus = ` + filterByTypeChar + ` 
+			and membershipStatus = '` + filterByTypeChar + `' 
 			ORDER BY createdAt DESC`
 	}
 	rows, err := db.DB.Query(query, userId)
@@ -221,6 +255,19 @@ func InsertMembershipRequest(um models.UserMembership) (*int, error) {
 	return &id, nil
 }
 
+func CancelMembershipRequest(membershipId int) error {
+	_, err := db.DB.Exec(`
+		UPDATE userMemberships SET isActive = 0
+		WHERE membershipId = @p1`,
+		membershipId,
+	)
+	if err != nil {
+		LogService.LogError("❌ DB error: ", err)
+		return err
+	}
+	return nil
+}
+
 func TakeActionOnMembershipRequest(memberId int, membershipId int, actionTaken bussinessMembershipRequest.ActionType, userId int) (*int, error) {
 	var id int
 	// possible values "A" or "R"
@@ -277,4 +324,80 @@ func GetPlanCountByGymId(gymId int) (*int, error) {
 		return nil, err
 	}
 	return &count, nil
+}
+
+func GetAllMembershipPlansRequest(gymId int, filterBy MembershipStatus) ([]models.UserMembership, error) {
+	var query string
+
+	if filterBy == All {
+		query = `SELECT membershipId, userId, p.planId, startDate, endDate, um.isActive, membershipStatus, um.createdAt
+			FROM userMemberships um
+			inner join plans p on p.planId = um.planId
+			where p.gymId = @p1
+			and um.isActive = 1
+			and p.isActive = 1
+			ORDER BY createdAt DESC`
+	} else {
+		var filterByTypeChar string
+		switch filterBy {
+		case Pending:
+			{
+				filterByTypeChar = "P"
+			}
+		case Rejected:
+			{
+				filterByTypeChar = "R"
+			}
+		case Approved:
+			{
+				filterByTypeChar = "A"
+			}
+		}
+		query = `SELECT membershipId, userId, p.planId, startDate, endDate, um.isActive, membershipStatus, um.createdAt
+			FROM userMemberships um
+			inner join plans p on p.planId = um.planId
+			where p.gymId = @p1
+			and um.isActive = 1
+			and p.isActive = 1
+			and membershipStatus = '` + filterByTypeChar + `' 
+			ORDER BY createdAt DESC`
+	}
+	rows, err := db.DB.Query(query, gymId)
+	if err != nil {
+		LogService.LogError("❌ DB query error: ", err)
+		return nil, err
+	}
+	defer rows.Close()
+
+	var memberships []models.UserMembership
+
+	for rows.Next() {
+		var membership models.UserMembership
+		err := rows.Scan(
+			&membership.MembershipId,
+			&membership.UserId,
+			&membership.PlanId,
+			&membership.StartDate,
+			&membership.EndDate,
+			&membership.IsActive,
+			&membership.MembershipStatus,
+			&membership.CreatedAt,
+		)
+		if err != nil {
+			LogService.LogError("❌ DB scan error: ", err)
+			return nil, err
+		}
+		memberships = append(memberships, membership)
+	}
+
+	if err = rows.Err(); err != nil {
+		LogService.LogError("❌ DB rows error: ", err)
+		return nil, err
+	}
+
+	if len(memberships) == 0 {
+		return nil, sql.ErrNoRows
+	}
+
+	return memberships, nil
 }

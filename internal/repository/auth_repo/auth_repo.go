@@ -25,6 +25,29 @@ func UpdateLoginAuthToken(userId int, authToken string) error {
 	return nil
 }
 
+func UpdateUserPassword(userId int, newPass string) error {
+	hashedPass, pErr := bussinessAuth.HashPasswordArgon2id(newPass)
+	if pErr != nil {
+		LogService.LogError("Error generating password hash: ", pErr)
+		return pErr
+	}
+	_, err := db.DB.Exec(`UPDATE users SET userPass = @p1 WHERE userId = @p2`, hashedPass, userId)
+	if err != nil {
+		LogService.LogError("❌ DB error: ", err)
+		return err
+	}
+	return nil
+}
+
+func InActiveUser(userId int) error {
+	_, err := db.DB.Exec(`UPDATE users SET isActive = 0 WHERE userId = @p1`, userId)
+	if err != nil {
+		LogService.LogError("❌ DB error: ", err)
+		return err
+	}
+	return nil
+}
+
 func InsertRegistrationRecord(record models.UserRecord) (*models.UserRecord, error) {
 	var userId int
 	// Hash password

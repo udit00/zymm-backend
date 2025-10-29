@@ -1,4 +1,4 @@
-package employeesrepo
+package employeesRepo
 
 import (
 	"database/sql"

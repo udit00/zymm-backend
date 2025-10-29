@@ -65,6 +65,10 @@ type RequestPlanFromUserToGymModel struct {
 	PlanId int `json:"planId`
 }
 
+type CancelRequestMembershipModel struct {
+	MembershipId int `json:"membershipId"`
+}
+
 type TakeActionOnMembershipRequestModel struct {
 	MembershipId int    `json:"membershipId"`
 	ActionTaken  string `json:"actionTaken"`
