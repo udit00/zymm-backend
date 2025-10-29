@@ -258,3 +258,23 @@ func UpdateActionTakenOnUserMembership(membershipId int, actionTaken bussinessMe
 	}
 	return nil
 }
+
+func GetPlanCountByGymId(gymId int) (*int, error) {
+	count := 0
+	err := db.DB.QueryRow(`
+		SELECT count(*)
+		FROM plans
+		WHERE gymId = @p1
+		and isActive = 1
+		`,
+		gymId).Scan(
+		&count)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, sql.ErrNoRows
+		}
+		LogService.LogError("❌ DB error: ", err)
+		return nil, err
+	}
+	return &count, nil
+}

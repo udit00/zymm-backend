@@ -205,23 +205,28 @@ func requestMembershipByUserToGym(w http.ResponseWriter, r *http.Request) {
 
 	latestUserMembershipDetails, userMembershipError := membershipRepo.GetUserMembershipByUserId(createdBy)
 	if latestUserMembershipDetails != nil {
-		startTime, err := time.Parse(time.RFC3339, latestUserMembershipDetails.StartDate)
+		layout := time.RFC3339
+		startTime, err := time.Parse(layout, latestUserMembershipDetails.StartDate)
 		if err != nil {
 			utils.SendErrorResponse(w, http.StatusBadRequest, err.Error())
 			return
 		}
 
-		endTime, err := time.Parse(time.RFC3339, latestUserMembershipDetails.EndDate)
+		endTime, err := time.ParseInLocation(layout, latestUserMembershipDetails.EndDate, time.UTC)
 		if err != nil {
 			utils.SendErrorResponse(w, http.StatusBadRequest, err.Error())
 			return
 		}
 
-		now := time.Now().UTC() // use UTC for fair comparison
-		fmt.Println("Current time (UTC):", now)
+		now := time.Now().UTC()
+		isBetween := now.After(startTime) && now.Before(endTime)
+
+		fmt.Println("Start:", startTime)
+		fmt.Println("End:", endTime)
+		fmt.Println("Now:", now)
 
 		// Check if current time is between start and end
-		if latestUserMembershipDetails.MembershipStatus == "A" && now.After(startTime) && now.Before(endTime) {
+		if latestUserMembershipDetails.MembershipStatus == "A" && isBetween {
 			fmt.Println("✅ Current time is between start and end")
 			utils.SendErrorResponse(w, http.StatusBadRequest, "You already have an active plan.")
 			return

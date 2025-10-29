@@ -1,26 +1,97 @@
 package userRepo
 
-// GetAllUsers → fetch all users from DB
-// func GetAllUsers() ([]models.User, error) {
-// 	rows, err := db.DB.Query("SELECT user_id, user_name, user_pass FROM users")
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	defer rows.Close()
+import (
+	"database/sql"
+	"zymm/internal/db"
+	"zymm/internal/models"
+	LogService "zymm/internal/service/log_service"
+)
 
-// 	var users []models.User
-// 	for rows.Next() {
-// 		var u models.User
-// 		if err := rows.Scan(&u.ID, &u.Name, &u.Pass); err != nil {
-// 			return nil, err
-// 		}
-// 		users = append(users, u)
-// 	}
+func GetUserDataByEmailOrMobile(emailOrMobile string) (*models.LoginUserDataModel, error) {
+	var userData models.LoginUserDataModel
+	err := db.DB.QueryRow("SELECT userId,userName,userPass,roleId FROM users WHERE email = @p1 or mobile = @p2", emailOrMobile, emailOrMobile).Scan(&userData.UserId, &userData.DisplayName, &userData.Password, &userData.RoleId)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, sql.ErrNoRows
+		}
+		LogService.LogError("❌ DB error: ", err)
+		return nil, err
+	}
+	return &userData, nil
+}
 
-// 	if err = rows.Err(); err != nil {
-// 		log.Println("Row iteration error:", err)
-// 		return nil, err
-// 	}
+func GetUserByEmailOrMobile(emailOrMobile string) (*models.UserRecord, error) {
+	user := &models.UserRecord{}
+	err := db.DB.QueryRow(`
+		SELECT userId, userName, gender, mobile, email, profilePic, roleId, createdAt, updatedAt
+		FROM users
+		WHERE email = @p1 OR mobile = @p2`,
+		emailOrMobile, emailOrMobile).Scan(
+		&user.UserId, &user.UserName, &user.Gender, &user.Mobile, &user.Email, &user.ProfilePic, &user.RoleId, &user.CreatedAt, &user.UpdatedAt)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, sql.ErrNoRows
+		}
+		LogService.LogError("❌ DB error: ", err)
+		return nil, err
+	}
+	return user, nil
+}
 
-// 	return users, nil
-// }
+func GetUserByUserId(userId int) (*models.UserRecord, error) {
+	user := &models.UserRecord{}
+	err := db.DB.QueryRow(`
+		SELECT userId, userName, gender, mobile, email, profilePic, roleId, createdAt, updatedAt
+		FROM users
+		WHERE userId = @p1`,
+		userId).Scan(
+		&user.UserId, &user.UserName, &user.Gender, &user.Mobile, &user.Email, &user.ProfilePic, &user.RoleId, &user.CreatedAt, &user.UpdatedAt)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, sql.ErrNoRows
+		}
+		LogService.LogError("❌ DB error: ", err)
+		return nil, err
+	}
+	return user, nil
+}
+
+func CheckUserExistsByMobile(mobile string) (bool, error) {
+	var exists int
+
+	err := db.DB.QueryRow(`
+		SELECT 
+			CASE 
+				WHEN EXISTS (SELECT 1 FROM users WHERE mobile = @p1)
+					THEN 1 
+				ELSE 0 
+			END`,
+		mobile).Scan(&exists)
+
+	if err != nil {
+		LogService.LogError("❌ DB error: ", err)
+		return false, err
+	}
+
+	return exists == 1, nil
+}
+
+func CheckUserExistsByEmail(email string) (bool, error) {
+	var exists int
+
+	err := db.DB.QueryRow(`
+		SELECT 
+			CASE 
+				WHEN EXISTS (SELECT 1 FROM users WHERE email = @p1)
+					THEN 1 
+				ELSE 0 
+			END`,
+		email).Scan(&exists)
+
+	if err != nil {
+		LogService.LogError("❌ DB error: ", err)
+		return false, err
+	}
+
+	return exists == 1, nil
+}

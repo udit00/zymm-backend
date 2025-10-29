@@ -6,8 +6,8 @@ import (
 	"net/http"
 	bussinessAuth "zymm/internal/business/auth"
 	"zymm/internal/models"
-	authRepo "zymm/internal/repository/auth_repo"
 	membershipRepo "zymm/internal/repository/membership_repo"
+	"zymm/internal/repository/userRepo"
 	LogService "zymm/internal/service/log_service"
 	"zymm/utils"
 )
@@ -42,7 +42,7 @@ func getSelfData(w http.ResponseWriter, r *http.Request) {
 	var planDetails *models.PlanRecord
 	var planErr error
 
-	userData, err := authRepo.GetUserByUserId(currentUserId)
+	userData, err := userRepo.GetUserByUserId(currentUserId)
 	if err != nil {
 		LogService.LogError("❌ Error fetching user data: ", err)
 		utils.SendErrorResponse(w, http.StatusInternalServerError, "Error fetching user data: "+err.Error())

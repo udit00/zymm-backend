@@ -7,7 +7,6 @@ import (
 	LogService "zymm/internal/service/log_service"
 )
 
-// InsertFeedback inserts a feedback row and returns the newly created id
 func InsertFeedback(f models.FeedbackRecord) (*int, error) {
 	var id int
 	err := db.DB.QueryRow(`
@@ -23,15 +22,23 @@ func InsertFeedback(f models.FeedbackRecord) (*int, error) {
 	return &id, nil
 }
 
-// GetFeedbackById retrieves a single feedback by feedbackId
 func GetFeedbackById(feedbackId int) (*models.FeedbackRecord, error) {
 	feedback := &models.FeedbackRecord{}
 	err := db.DB.QueryRow(`
-		SELECT feedbackId, rating, comments, gymId, createdBy, createdAt
-		FROM feedback
-		WHERE feedbackId = @p1`,
+		    SELECT feedbackId, rating, comments, gymId, createdBy, u.userName as createdByName, u.profilePic as createdByProfilePic, f.createdAt
+			FROM feedback f
+			inner join users u on u.userId = f.createdBy
+			WHERE feedbackId = @p1`,
 		feedbackId).Scan(
-		&feedback.FeedbackId, &feedback.Rating, &feedback.Comments, &feedback.GymId, &feedback.CreatedBy, &feedback.CreatedAt)
+		&feedback.FeedbackId,
+		&feedback.Rating,
+		&feedback.Comments,
+		&feedback.GymId,
+		&feedback.CreatedBy,
+		&feedback.CreatedByName,
+		&feedback.CreatedByProfilePic,
+		&feedback.CreatedAt,
+	)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, sql.ErrNoRows
@@ -42,13 +49,15 @@ func GetFeedbackById(feedbackId int) (*models.FeedbackRecord, error) {
 	return feedback, nil
 }
 
-// GetAllFeedbacksByGymId retrieves all feedbacks for a specific gym
 func GetAllFeedbacksByGymId(gymId int) ([]models.FeedbackRecord, error) {
-	query := `SELECT feedbackId, rating, comments, gymId, createdBy, createdAt
-		FROM feedback
+	query := `
+		SELECT feedbackId, rating, comments, gymId, createdBy, u.userName as createdByName, u.profilePic as createdByProfilePic, f.createdAt
+		FROM feedback f 
+		inner join users u on u.userId = f.createdBy
 		WHERE gymId = @p1
-		ORDER BY createdAt DESC`
-	
+		ORDER BY f.createdAt DESC
+		`
+
 	rows, err := db.DB.Query(query, gymId)
 	if err != nil {
 		LogService.LogError("❌ DB query error: ", err)
@@ -66,6 +75,8 @@ func GetAllFeedbacksByGymId(gymId int) ([]models.FeedbackRecord, error) {
 			&feedback.Comments,
 			&feedback.GymId,
 			&feedback.CreatedBy,
+			&feedback.CreatedByName,
+			&feedback.CreatedByProfilePic,
 			&feedback.CreatedAt,
 		)
 		if err != nil {
@@ -87,7 +98,6 @@ func GetAllFeedbacksByGymId(gymId int) ([]models.FeedbackRecord, error) {
 	return feedbacks, nil
 }
 
-// UpdateFeedback updates an existing feedback
 func UpdateFeedback(feedback models.FeedbackRecord) error {
 	_, err := db.DB.Exec(`
 		UPDATE feedback SET 
@@ -104,7 +114,6 @@ func UpdateFeedback(feedback models.FeedbackRecord) error {
 	return nil
 }
 
-// DeleteFeedback deletes a feedback by feedbackId
 func DeleteFeedback(feedbackId int) error {
 	result, err := db.DB.Exec(`
 		DELETE FROM feedback
@@ -114,19 +123,34 @@ func DeleteFeedback(feedbackId int) error {
 		LogService.LogError("❌ DB error deleting feedback: ", err)
 		return err
 	}
-	
+
 	rowsAffected, err := result.RowsAffected()
 	if err != nil {
 		LogService.LogError("❌ DB error getting rows affected: ", err)
 		return err
 	}
-	
+
 	if rowsAffected == 0 {
 		return sql.ErrNoRows
 	}
-	
+
 	return nil
 }
 
-
-
+func GetFeedbackCountByGymId(gymId int) (*int, error) {
+	feedbackCount := 0
+	err := db.DB.QueryRow(`
+		SELECT count(*)
+		FROM feedback
+		WHERE gymId = @p1`,
+		gymId).Scan(
+		&feedbackCount)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, sql.ErrNoRows
+		}
+		LogService.LogError("❌ DB error: ", err)
+		return nil, err
+	}
+	return &feedbackCount, nil
+}

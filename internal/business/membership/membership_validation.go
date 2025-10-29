@@ -9,8 +9,9 @@ import (
 	businessRoles "zymm/internal/business/roles"
 	rolestype "zymm/internal/business/roles/roles_type"
 	"zymm/internal/models"
-	authRepo "zymm/internal/repository/auth_repo"
+	gymRepo "zymm/internal/repository/gym_repo"
 	membershipRepo "zymm/internal/repository/membership_repo"
+	"zymm/internal/repository/userRepo"
 )
 
 func ValidateUpsertPlanRequest(req models.UpsertPlanRequest) error {
@@ -60,7 +61,7 @@ func ValidateUpsertPlanWithDBChecks(req models.UpsertPlanRequest, userId int) er
 	}
 
 	// Check if user exists
-	userDetails, err := authRepo.GetUserByUserId(userId)
+	userDetails, err := userRepo.GetUserByUserId(userId)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return errors.New("User does not exist")
@@ -79,7 +80,7 @@ func ValidateUpsertPlanWithDBChecks(req models.UpsertPlanRequest, userId int) er
 	}
 
 	// Check if gym exists
-	_, err = authRepo.GetGymById(req.GymId)
+	_, err = gymRepo.GetGymById(req.GymId)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return errors.New("Gym does not exist")

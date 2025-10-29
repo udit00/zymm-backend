@@ -1,18 +1,26 @@
 package businessNotificationType
 
-type Notification struct {
+type notification struct {
 	Name        string
 	Description string
 }
 
+type NotificationType int
+
 const (
-	NotificationGeneralInfo   = 1
-	NotificationGymBroadcast  = 2
-	NotificationMembershipReq = 3
-	NotificationMembershipRes = 4
+	NotificationZymm             NotificationType = 1
+	NotificationGeneralInfo      NotificationType = 2
+	NotificationGymBroadcast     NotificationType = 3
+	NotificationMembershipReq    NotificationType = 4
+	NotificationMembershipRes    NotificationType = 5
+	NotificationFeedbackReceived NotificationType = 6
 )
 
-var Notifications = map[int]Notification{
+var notificationsData = map[NotificationType]notification{
+	NotificationZymm: {
+		Name:        "Zymm level broadcast.",
+		Description: "Reserved for the app holder to notify all zymm owners/managers.",
+	},
 	NotificationGeneralInfo: {
 		Name:        "general_info",
 		Description: "Normal general information notifications.",
@@ -28,5 +36,9 @@ var Notifications = map[int]Notification{
 	NotificationMembershipRes: {
 		Name:        "membership_response",
 		Description: "Membership Accept/Reject Notification.",
+	},
+	NotificationFeedbackReceived: {
+		Name:        "feedback_received",
+		Description: "A member has submitted a feedback.",
 	},
 }

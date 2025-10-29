@@ -11,6 +11,8 @@ import (
 	"zymm/internal/models"
 	gymModels "zymm/internal/models/gym_models"
 	authRepo "zymm/internal/repository/auth_repo"
+	gymRepo "zymm/internal/repository/gym_repo"
+	"zymm/internal/repository/userRepo"
 	LogService "zymm/internal/service/log_service"
 	"zymm/utils"
 )
@@ -65,7 +67,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Check user in DB
-	userDataModel, err := authRepo.GetUserDataByEmailOrMobile(req.EmailOrMobile)
+	userDataModel, err := userRepo.GetUserDataByEmailOrMobile(req.EmailOrMobile)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			utils.SendErrorResponse(w, http.StatusUnauthorized, "Invalid credentials: no user found with email or mobile "+req.EmailOrMobile)
@@ -129,7 +131,7 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userExistsWithMobile, userExistsWithMobileErr := authRepo.CheckUserExistsByMobile(req.Mobile)
+	userExistsWithMobile, userExistsWithMobileErr := userRepo.CheckUserExistsByMobile(req.Mobile)
 	if userExistsWithMobileErr != nil {
 		utils.SendErrorResponse(w, http.StatusExpectationFailed, userExistsWithMobileErr.Error())
 		return
@@ -141,7 +143,7 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if req.Email != nil {
-		userExistsWithEmail, userExistsWithEmailErr := authRepo.CheckUserExistsByEmail(*req.Email)
+		userExistsWithEmail, userExistsWithEmailErr := userRepo.CheckUserExistsByEmail(*req.Email)
 		if userExistsWithEmailErr != nil {
 			utils.SendErrorResponse(w, http.StatusExpectationFailed, userExistsWithEmailErr.Error())
 			return
@@ -239,7 +241,7 @@ func ownerRegistrationHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userExistsWithMobile, userExistsWithMobileErr := authRepo.CheckUserExistsByMobile(req.Mobile)
+	userExistsWithMobile, userExistsWithMobileErr := userRepo.CheckUserExistsByMobile(req.Mobile)
 	if userExistsWithMobileErr != nil {
 		utils.SendErrorResponse(w, http.StatusExpectationFailed, userExistsWithMobileErr.Error())
 		return
@@ -251,7 +253,7 @@ func ownerRegistrationHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if req.OwnerPersonalEmail != nil {
-		userExistsWithEmail, userExistsWithEmailErr := authRepo.CheckUserExistsByEmail(*req.OwnerPersonalEmail)
+		userExistsWithEmail, userExistsWithEmailErr := userRepo.CheckUserExistsByEmail(*req.OwnerPersonalEmail)
 		if userExistsWithEmailErr != nil {
 			utils.SendErrorResponse(w, http.StatusExpectationFailed, userExistsWithEmailErr.Error())
 			return
@@ -312,7 +314,7 @@ func ownerRegistrationHandler(w http.ResponseWriter, r *http.Request) {
 		LocationLong:  req.LocationLong,
 	}
 
-	_, gymInsertionError := authRepo.InsertGym(db.DB, gymRecord)
+	_, gymInsertionError := gymRepo.InsertGym(db.DB, gymRecord)
 
 	if gymInsertionError != nil {
 		utils.SendErrorResponse(w, http.StatusInternalServerError, "Error creating gym: "+gymInsertionError.Error())
