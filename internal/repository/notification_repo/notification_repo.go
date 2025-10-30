@@ -104,6 +104,22 @@ func GetNotificationsByUserId(userId int) ([]models.NotificationRecord, error) {
 	return notifications, nil
 }
 
+func GetUnreadNotificationCount(userId int) (int, error) {
+	var count int
+	err := db.DB.QueryRow(`
+		SELECT COUNT(*) 
+		FROM notifications 
+		WHERE userId = @p1 AND (isRead = 0 OR isRead IS NULL)
+	`, userId).Scan(&count)
+
+	if err != nil {
+		LogService.LogError("❌ DB error getting unread notification count: ", err)
+		return 0, err
+	}
+
+	return count, nil
+}
+
 func SendNotificationForMembershipRequested(gymId int, userId int) {
 	userDetails, userDetailsErr := userRepo.GetUserByUserId(userId)
 	if userDetailsErr != nil {

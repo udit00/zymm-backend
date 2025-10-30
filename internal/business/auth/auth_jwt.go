@@ -26,8 +26,6 @@ func getSecretKey() string {
 
 	if MY_SECRET_KEY == "" {
 		LogService.LogMessage("TOKEN_GET_SECRET_KEY is empty! Check environment variable.")
-	} else {
-		LogService.LogMessage("TOKEN_GET_SECRET_KEY loaded successfully.")
 	}
 
 	return MY_SECRET_KEY

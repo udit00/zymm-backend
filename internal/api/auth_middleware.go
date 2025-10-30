@@ -19,8 +19,6 @@ const ctxClaimDataKey ctxKey = "ctxClaimsKey"
 // business auth helpers for parsing/validation so it follows existing claim names.
 func AuthMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		LogService.LogMessage("AuthMiddleware: checking Authorization header")
-
 		authHeader := r.Header.Get("Authorization")
 		if authHeader == "" {
 			utils.SendErrorResponse(w, http.StatusUnauthorized, "Missing Authorization header")

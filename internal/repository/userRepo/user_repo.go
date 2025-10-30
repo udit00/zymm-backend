@@ -103,3 +103,18 @@ func CheckUserExistsByEmail(email string) (bool, error) {
 
 	return exists == 1, nil
 }
+
+func UpdateUserProfilePicture(userId int, profilePicUrl string) error {
+	_, err := db.DB.Exec(`
+		UPDATE users 
+		SET profilePic = @p1, updatedAt = GETDATE()
+		WHERE userId = @p2 and isActive = 1
+	`, profilePicUrl, userId)
+
+	if err != nil {
+		LogService.LogError("❌ DB error updating profile picture: ", err)
+		return err
+	}
+
+	return nil
+}

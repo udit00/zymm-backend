@@ -43,6 +43,7 @@ type SelfDataResponse struct {
 	ActiveMembershipDetails *UserMembership `json:"activeMembershipDetails"`
 	VisitedToday            bool            `json:"visitedToday"`
 	PlanDetails             *PlanRecord     `json:"planDetails"`
+	UnreadNotificationCount int             `json:"unreadNotificationCount"`
 }
 
 type ChangePasswordRequestModel struct {

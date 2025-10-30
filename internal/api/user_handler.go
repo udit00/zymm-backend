@@ -3,13 +3,20 @@ package api
 import (
 	"database/sql"
 	"encoding/json"
+	"fmt"
+	"io"
 	"net/http"
+	"os"
+	"path/filepath"
+	"strings"
+	"time"
 	bussinessAuth "zymm/internal/business/auth"
 	"zymm/internal/models"
 	authRepo "zymm/internal/repository/auth_repo"
 	employeesRepo "zymm/internal/repository/employees_repo"
 	gymRepo "zymm/internal/repository/gym_repo"
 	membershipRepo "zymm/internal/repository/membership_repo"
+	notificationRepo "zymm/internal/repository/notification_repo"
 	"zymm/internal/repository/userRepo"
 	LogService "zymm/internal/service/log_service"
 	"zymm/utils"
@@ -26,6 +33,10 @@ func UserHandlerDelegate(mux *http.ServeMux) {
 	mux.HandleFunc(userRouteAppended("selfData"), AuthMiddleware(getSelfData))
 	mux.HandleFunc(userRouteAppended("changePassword"), AuthMiddleware(changePassword))
 	mux.HandleFunc(userRouteAppended("deleteProfile"), AuthMiddleware(deleteProfile))
+	mux.HandleFunc(userRouteAppended("uploadProfilePicture"), AuthMiddleware(uploadProfilePicture))
+	
+	// Serve static images
+	mux.Handle("/images/", http.StripPrefix("/images/", http.FileServer(http.Dir("./images"))))
 }
 
 func getSelfData(w http.ResponseWriter, r *http.Request) {
@@ -73,15 +84,24 @@ func getSelfData(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Get unread notification count
+	unreadCount, unreadErr := notificationRepo.GetUnreadNotificationCount(currentUserId)
+	if unreadErr != nil {
+		LogService.LogError("❌ Error fetching unread notification count: ", unreadErr)
+		// Don't fail the request, just set count to 0
+		unreadCount = 0
+	}
+
 	selfDataResponse := models.SelfDataResponse{
-		UserId:       userData.UserId,
-		UserName:     userData.UserName,
-		Email:        userData.Email,
-		Mobile:       userData.Mobile,
-		Gender:       userData.Gender,
-		RoleId:       userData.RoleId,
-		ProfilePic:   userData.ProfilePic,
-		VisitedToday: false,
+		UserId:                  userData.UserId,
+		UserName:                userData.UserName,
+		Email:                   userData.Email,
+		Mobile:                  userData.Mobile,
+		Gender:                  userData.Gender,
+		RoleId:                  userData.RoleId,
+		ProfilePic:              userData.ProfilePic,
+		VisitedToday:            false,
+		UnreadNotificationCount: unreadCount,
 	}
 	if planDetails != nil {
 		selfDataResponse.PlanId = &planDetails.PlanId
@@ -252,4 +272,141 @@ func deleteProfile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	utils.SendSuccessResponse(w, http.StatusAccepted, nil)
+}
+
+func uploadProfilePicture(w http.ResponseWriter, r *http.Request) {
+	LogService.LogMessage("uploadProfilePicture was called")
+
+	if r.Method != http.MethodPost {
+		utils.SendErrorResponse(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
+	// Get authenticated user from context
+	claims, ok := r.Context().Value(ctxClaimDataKey).(*bussinessAuth.MyCustomClaims)
+	if !ok || claims == nil {
+		utils.SendErrorResponse(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+
+	currentUserId := claims.UserId
+	if currentUserId < 0 {
+		utils.SendErrorResponse(w, http.StatusUnauthorized, "invalid user id in context")
+		return
+	}
+
+	// Parse multipart form data (max 10MB)
+	err := r.ParseMultipartForm(10 << 20)
+	if err != nil {
+		utils.SendErrorResponse(w, http.StatusBadRequest, "Unable to parse form: "+err.Error())
+		return
+	}
+
+	// Get the file from the request
+	file, handler, err := r.FormFile("profilePicture")
+	if err != nil {
+		utils.SendErrorResponse(w, http.StatusBadRequest, "Error retrieving file: "+err.Error())
+		return
+	}
+	defer file.Close()
+
+	// Log the content type for debugging
+	contentType := handler.Header.Get("Content-Type")
+	LogService.LogMessage(fmt.Sprintf("📸 Received file: %s, Content-Type: %s, Size: %d bytes", handler.Filename, contentType, handler.Size))
+
+	// Validate file type - check both content type and extension
+	fileExt := strings.ToLower(filepath.Ext(handler.Filename))
+	validExtensions := map[string]bool{
+		".jpg":  true,
+		".jpeg": true,
+		".png":  true,
+		".gif":  true,
+		".webp": true,
+	}
+
+	isValidContentType := strings.HasPrefix(contentType, "image/")
+	isValidExtension := validExtensions[fileExt]
+
+	if !isValidContentType && !isValidExtension {
+		utils.SendErrorResponse(w, http.StatusBadRequest, fmt.Sprintf("Only image files are allowed. Received: %s (ext: %s)", contentType, fileExt))
+		return
+	}
+
+	// Validate file size (max 5MB)
+	if handler.Size > 5<<20 {
+		utils.SendErrorResponse(w, http.StatusBadRequest, "File size exceeds 5MB limit")
+		return
+	}
+
+	// Create images directory if it doesn't exist
+	imagesDir := "./images/profile_pictures"
+	if err := os.MkdirAll(imagesDir, os.ModePerm); err != nil {
+		LogService.LogError("❌ Error creating images directory: ", err)
+		utils.SendErrorResponse(w, http.StatusInternalServerError, "Error creating upload directory")
+		return
+	}
+
+	// Use the already validated fileExt, or default to .jpg if empty
+	if fileExt == "" {
+		// Try to get extension from content type if filename had no extension
+		switch contentType {
+		case "image/jpeg", "image/jpg":
+			fileExt = ".jpg"
+		case "image/png":
+			fileExt = ".png"
+		case "image/gif":
+			fileExt = ".gif"
+		case "image/webp":
+			fileExt = ".webp"
+		default:
+			fileExt = ".jpg"
+		}
+	}
+	
+	timestamp := time.Now().Unix()
+	filename := fmt.Sprintf("user_%d_%d%s", currentUserId, timestamp, fileExt)
+	filepath := filepath.Join(imagesDir, filename)
+
+	// Create the file
+	dst, err := os.Create(filepath)
+	if err != nil {
+		LogService.LogError("❌ Error creating file: ", err)
+		utils.SendErrorResponse(w, http.StatusInternalServerError, "Error saving file")
+		return
+	}
+	defer dst.Close()
+
+	// Copy the uploaded file to the destination file
+	if _, err := io.Copy(dst, file); err != nil {
+		LogService.LogError("❌ Error copying file: ", err)
+		utils.SendErrorResponse(w, http.StatusInternalServerError, "Error saving file")
+		return
+	}
+
+	// Generate the URL for the image
+	// Get the host from the request
+	host := r.Host
+	scheme := "http"
+	if r.TLS != nil {
+		scheme = "https"
+	}
+	
+	imageUrl := fmt.Sprintf("%s://%s/images/profile_pictures/%s", scheme, host, filename)
+
+	// Update user's profile picture in database
+	err = userRepo.UpdateUserProfilePicture(currentUserId, imageUrl)
+	if err != nil {
+		// If database update fails, delete the uploaded file
+		os.Remove(filepath)
+		utils.SendErrorResponse(w, http.StatusInternalServerError, "Error updating profile picture: "+err.Error())
+		return
+	}
+
+	// Return success response with the image URL
+	response := map[string]interface{}{
+		"message":    "Profile picture uploaded successfully",
+		"profilePic": imageUrl,
+	}
+
+	utils.SendSuccessResponse(w, http.StatusOK, response)
 }
