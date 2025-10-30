@@ -98,6 +98,12 @@ func createEmployee(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	employeeRole := businessRoleType.GetRoleTypeFromInt(req.RoleId)
+	if employeeRole == nil {
+		utils.SendErrorResponse(w, http.StatusExpectationFailed, "Invalid role")
+		return
+	}
+
 	insertedUserRecord, userInsertionError := authRepo.InsertRegistrationRecord(models.UserRecord{
 		DisplayPic: req.DisplayPic,
 		UserName:   req.DisplayName,
@@ -107,7 +113,7 @@ func createEmployee(w http.ResponseWriter, r *http.Request) {
 		UserId:     0,
 		Gender:     req.Gender,
 		ProfilePic: req.DisplayPic,
-		RoleId:     roleType.Int(),
+		RoleId:     (*employeeRole).Int(),
 	})
 
 	if userInsertionError != nil {
