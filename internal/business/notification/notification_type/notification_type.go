@@ -14,6 +14,7 @@ const (
 	NotificationMembershipReq    NotificationType = 4
 	NotificationMembershipRes    NotificationType = 5
 	NotificationFeedbackReceived NotificationType = 6
+	NotificationPendingFees      NotificationType = 7
 )
 
 var notificationsData = map[NotificationType]notification{
@@ -40,5 +41,9 @@ var notificationsData = map[NotificationType]notification{
 	NotificationFeedbackReceived: {
 		Name:        "feedback_received",
 		Description: "A member has submitted a feedback.",
+	},
+	NotificationPendingFees: {
+		Name:        "pending_fees",
+		Description: "Pending Fees Reminder (use cases: membership expired or expiring within 10 days).",
 	},
 }

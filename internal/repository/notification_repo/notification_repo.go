@@ -15,6 +15,20 @@ import (
 )
 
 func InsertNotification(userId int, notificationType businessNotificationType.NotificationType, title string, description string, createdBy int) error {
+	// Ensure title and description fit DB constraints (VARCHAR(100))
+	const maxTitleLength = 100
+	const maxDescLength = 100
+	
+	if len(title) > maxTitleLength {
+		title = title[:maxTitleLength]
+		LogService.LogMessage(fmt.Sprintf("⚠️ Notification title truncated to %d chars", maxTitleLength))
+	}
+	
+	if len(description) > maxDescLength {
+		description = description[:maxDescLength-3] + "..."
+		LogService.LogMessage(fmt.Sprintf("⚠️ Notification description truncated to %d chars", maxDescLength))
+	}
+	
 	_, err := db.DB.Exec(`
 		INSERT INTO notifications (userId, notificationType, notificationTitle, notificationDesc, createdBy)
 		VALUES (@p1, @p2, @p3, @p4, @p5)`,
@@ -178,4 +192,10 @@ func NotifyGymOwnerForMemberJoined(actionTakenBy int, notificationFor int, planD
 	}
 
 	InsertNotification(notificationFor, businessNotificationType.NotificationMembershipRes, notificationTitle, notificationDescription, actionTakenBy)
+}
+
+// SendPendingFeesNotification sends a fee reminder notification to a user
+func SendPendingFeesNotification(userId int, planName string, createdBy int) {
+	notificationTitle, notificationDescription := notification.GetNotificationTitleAndDesc(businessNotificationType.NotificationPendingFees, planName)
+	InsertNotification(userId, businessNotificationType.NotificationPendingFees, notificationTitle, notificationDescription, createdBy)
 }

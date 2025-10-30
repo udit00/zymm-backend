@@ -73,3 +73,26 @@ type TakeActionOnMembershipRequestModel struct {
 	MembershipId int    `json:"membershipId"`
 	ActionTaken  string `json:"actionTaken"`
 }
+
+// MemberWithPendingFees represents a member whose membership is expired or expiring soon
+type MemberWithPendingFees struct {
+	UserId           int     `json:"userId"`
+	UserName         string  `json:"userName"`
+	Mobile           string  `json:"mobile"`
+	Email            *string `json:"email"`
+	ProfilePic       *string `json:"profilePic"`
+	MembershipId     int     `json:"membershipId"`
+	PlanId           int     `json:"planId"`
+	PlanName         string  `json:"planName"`
+	PlanPrice        float64 `json:"planPrice"`
+	StartDate        string  `json:"startDate"`
+	EndDate          string  `json:"endDate"`
+	DaysUntilExpiry  int     `json:"daysUntilExpiry"` // Negative if expired
+	IsExpired        bool    `json:"isExpired"`
+	MembershipStatus string  `json:"membershipStatus"`
+}
+
+// SendFeeReminderRequest represents the request to send fee reminders
+type SendFeeReminderRequest struct {
+	UserIds []int `json:"userIds"` // Array of user IDs to send notifications to
+}

@@ -16,6 +16,8 @@ func GetNotificationTitleAndDesc(notificationType businessNotificationType.Notif
 		return GetTitleAndDescForMembershipResponse(data)
 	case businessNotificationType.NotificationFeedbackReceived:
 		return GetTitleAndDescForFeedbackReceived()
+	case businessNotificationType.NotificationPendingFees:
+		return GetTitleAndDescForPendingFees(data)
 	default:
 		return "", ""
 	}
@@ -44,4 +46,9 @@ func GetTitleAndDescForMembershipResponse(gym string) (string, string) {
 
 func GetTitleAndDescForFeedbackReceived() (string, string) {
 	return "Feedback!", "A new feedback was submitted by a user."
+}
+
+func GetTitleAndDescForPendingFees(planName string) (string, string) {
+	// Keep message short to fit in 100 char DB limit
+	return "Fee Reminder!", "Your " + planName + " membership needs renewal. Please pay to continue."
 }

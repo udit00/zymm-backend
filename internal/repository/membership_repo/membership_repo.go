@@ -410,7 +410,7 @@ func DeactivatePlan(planId int) error {
 		SET isActive = 0
 		WHERE planId = @p1 AND isActive = 1
 	`, planId)
-	
+
 	if err != nil {
 		LogService.LogError("❌ DB error deactivating plan: ", err)
 		return err
@@ -436,7 +436,7 @@ func ActivatePlan(planId int) error {
 		SET isActive = 1
 		WHERE planId = @p1 AND isActive = 0
 	`, planId)
-	
+
 	if err != nil {
 		LogService.LogError("❌ DB error activating plan: ", err)
 		return err
@@ -453,4 +453,79 @@ func ActivatePlan(planId int) error {
 	}
 
 	return nil
+}
+
+// GetMembersWithPendingFees returns members whose membership has expired or will expire within 10 days
+// Only returns approved memberships (status = 'A')
+func GetMembersWithPendingFees(gymId int) ([]models.MemberWithPendingFees, error) {
+	rows, err := db.DB.Query(`
+		SELECT 
+			u.userId,
+			u.userName,
+			u.mobile,
+			u.email,
+			u.profilePic,
+			um.membershipId,
+			p.planId,
+			p.planName,
+			p.planPrice,
+			um.startDate,
+			um.endDate,
+			DATEDIFF(day, GETDATE(), um.endDate) as daysUntilExpiry,
+			CASE WHEN um.endDate < GETDATE() THEN 1 ELSE 0 END as isExpired,
+			um.membershipStatus
+		FROM userMemberships um
+		INNER JOIN users u ON um.userId = u.userId
+		INNER JOIN plans p ON um.planId = p.planId
+		WHERE p.gymId = @p1
+		AND um.membershipStatus = 'A'
+		AND um.isActive = 1
+		AND (
+			um.endDate < GETDATE() 
+			OR DATEDIFF(day, GETDATE(), um.endDate) <= 10
+		)
+		ORDER BY um.endDate ASC
+	`, gymId)
+
+	if err != nil {
+		LogService.LogError("❌ DB error during query execution: ", err)
+		return nil, err
+	}
+	defer rows.Close()
+
+	members := []models.MemberWithPendingFees{}
+
+	for rows.Next() {
+		member := models.MemberWithPendingFees{}
+		err := rows.Scan(
+			&member.UserId,
+			&member.UserName,
+			&member.Mobile,
+			&member.Email,
+			&member.ProfilePic,
+			&member.MembershipId,
+			&member.PlanId,
+			&member.PlanName,
+			&member.PlanPrice,
+			&member.StartDate,
+			&member.EndDate,
+			&member.DaysUntilExpiry,
+			&member.IsExpired,
+			&member.MembershipStatus,
+		)
+
+		if err != nil {
+			LogService.LogError("❌ DB error during row scan: ", err)
+			return nil, err
+		}
+
+		members = append(members, member)
+	}
+
+	if err := rows.Err(); err != nil {
+		LogService.LogError("❌ DB error after rows iteration: ", err)
+		return nil, err
+	}
+
+	return members, nil
 }

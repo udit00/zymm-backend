@@ -42,6 +42,8 @@ func MembershipHandlerDelegate(mux *http.ServeMux) {
 	mux.HandleFunc(membershipRouteAppended("deactivatePlan"), AuthMiddleware(deactivatePlan))
 	mux.HandleFunc(membershipRouteAppended("activatePlan"), AuthMiddleware(activatePlan))
 	mux.HandleFunc(membershipRouteAppended("cancelMembershipRequest"), AuthMiddleware(cancelMembershipRequestByUserToGym))
+	mux.HandleFunc(membershipRouteAppended("getMembersWithPendingFees"), AuthMiddleware(getMembersWithPendingFees))
+	mux.HandleFunc(membershipRouteAppended("sendFeeReminders"), AuthMiddleware(sendFeeReminders))
 }
 
 func upsertMembershipPlan(w http.ResponseWriter, r *http.Request) {
@@ -932,6 +934,198 @@ func activatePlan(w http.ResponseWriter, r *http.Request) {
 	}
 
 	utils.SendSuccessResponse(w, http.StatusOK, map[string]string{"message": "Plan activated successfully"})
+}
+
+// getMembersWithPendingFees returns members whose membership has expired or will expire within 10 days
+func getMembersWithPendingFees(w http.ResponseWriter, r *http.Request) {
+	LogService.LogMessage("getMembersWithPendingFees was called")
+	if r.Method != http.MethodGet {
+		utils.SendErrorResponse(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
+	claims, ok := r.Context().Value(ctxClaimDataKey).(*bussinessAuth.MyCustomClaims)
+	if !ok || claims == nil {
+		utils.SendErrorResponse(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+
+	currentUserId := claims.UserId
+	if currentUserId < 0 {
+		utils.SendErrorResponse(w, http.StatusUnauthorized, "invalid user id in context")
+		return
+	}
+
+	roleTypePtr := businessRoleType.GetRoleTypeFromInt(claims.RoleId)
+	if roleTypePtr == nil {
+		utils.SendErrorResponse(w, http.StatusUnauthorized, "Access Denied")
+		return
+	}
+
+	roleType := *roleTypePtr
+
+	// Only owners and managers can access this endpoint
+	if roleType != businessRoleType.RoleOwner && roleType != businessRoleType.RoleManager {
+		utils.SendErrorResponse(w, http.StatusForbidden, "Access Denied. Only owners and managers can view pending fees.")
+		return
+	}
+
+	// Get gym ID from user's JWT
+	var gymId int
+	if roleType == businessRoleType.RoleOwner {
+		gymDetails, gymDetailsErr := gymRepo.GetGymWithAdditionalDataByOwnerId(claims.UserId)
+		if gymDetailsErr != nil {
+			utils.SendErrorResponse(w, http.StatusInternalServerError, gymDetailsErr.Error())
+			return
+		}
+		gymId = gymDetails.GymId
+	} else {
+		employeeDetails, employeeDetailsErr := employeesRepo.GetEmployeeByUserId(claims.UserId)
+		if employeeDetailsErr != nil {
+			utils.SendErrorResponse(w, http.StatusInternalServerError, employeeDetailsErr.Error())
+			return
+		}
+		gymId = employeeDetails.GymId
+	}
+
+	if gymId <= 0 {
+		utils.SendErrorResponse(w, http.StatusExpectationFailed, "Gym Id not found for the user.")
+		return
+	}
+
+	// Get members with pending fees
+	members, membersErr := membershipRepo.GetMembersWithPendingFees(gymId)
+	if membersErr != nil {
+		if membersErr == sql.ErrNoRows {
+			utils.SendErrorResponse(w, http.StatusBadRequest, "No members with pending fees found.")
+			return
+		}
+		utils.SendErrorResponse(w, http.StatusBadRequest, membersErr.Error())
+		return
+	}
+
+	utils.SendSuccessResponse(w, http.StatusOK, members)
+}
+
+// sendFeeReminders sends fee reminder notifications to specified users
+func sendFeeReminders(w http.ResponseWriter, r *http.Request) {
+	LogService.LogMessage("sendFeeReminders was called")
+	if r.Method != http.MethodPost {
+		utils.SendErrorResponse(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
+	var req models.SendFeeReminderRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		utils.SendErrorResponse(w, http.StatusBadRequest, "Invalid request payload")
+		return
+	}
+
+	claims, ok := r.Context().Value(ctxClaimDataKey).(*bussinessAuth.MyCustomClaims)
+	if !ok || claims == nil {
+		utils.SendErrorResponse(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+
+	currentUserId := claims.UserId
+	if currentUserId < 0 {
+		utils.SendErrorResponse(w, http.StatusUnauthorized, "invalid user id in context")
+		return
+	}
+
+	roleTypePtr := businessRoleType.GetRoleTypeFromInt(claims.RoleId)
+	if roleTypePtr == nil {
+		utils.SendErrorResponse(w, http.StatusUnauthorized, "Access Denied")
+		return
+	}
+
+	roleType := *roleTypePtr
+
+	// Only owners and managers can send fee reminders
+	if roleType != businessRoleType.RoleOwner && roleType != businessRoleType.RoleManager {
+		utils.SendErrorResponse(w, http.StatusForbidden, "Access Denied. Only owners and managers can send fee reminders.")
+		return
+	}
+
+	if len(req.UserIds) == 0 {
+		utils.SendErrorResponse(w, http.StatusBadRequest, "At least one user ID is required")
+		return
+	}
+
+	// Get gym ID from user's JWT
+	var gymId int
+	if roleType == businessRoleType.RoleOwner {
+		gymDetails, gymDetailsErr := gymRepo.GetGymWithAdditionalDataByOwnerId(claims.UserId)
+		if gymDetailsErr != nil {
+			utils.SendErrorResponse(w, http.StatusInternalServerError, gymDetailsErr.Error())
+			return
+		}
+		gymId = gymDetails.GymId
+	} else {
+		employeeDetails, employeeDetailsErr := employeesRepo.GetEmployeeByUserId(claims.UserId)
+		if employeeDetailsErr != nil {
+			utils.SendErrorResponse(w, http.StatusInternalServerError, employeeDetailsErr.Error())
+			return
+		}
+		gymId = employeeDetails.GymId
+	}
+
+	// Send notifications to each user
+	notificationsSent := 0
+	notificationsFailed := 0
+
+	for _, userId := range req.UserIds {
+		// Get user's membership details for notification message
+		membership, membershipErr := membershipRepo.GetUserMembershipByUserId(userId)
+		if membershipErr != nil {
+			LogService.LogError(fmt.Sprintf("❌ Failed to get membership for user %d: %v", userId), membershipErr)
+			notificationsFailed++
+			continue
+		}
+
+		// Get plan details
+		planDetails, planErr := membershipRepo.GetPlanById(membership.PlanId)
+		if planErr != nil {
+			LogService.LogError(fmt.Sprintf("❌ Failed to get plan for user %d: %v", userId), planErr)
+			notificationsFailed++
+			continue
+		}
+
+		// Security check: Verify the plan belongs to the manager's/owner's gym
+		if *planDetails.GymId != gymId {
+			// LogService.LogError(fmt.Sprintf("❌ Access denied: User %d's plan does not belong to gym %d", userId), gymId), errors.New());
+			notificationsFailed++
+			continue
+		}
+
+		// Send notification using goroutine
+		go func(uid int, planName string) {
+			defer func() {
+				if r := recover(); r != nil {
+					log.Printf("Recovered in sendFeeReminders: %v", r)
+				}
+			}()
+
+			notificationRepo.SendPendingFeesNotification(uid, planName, currentUserId)
+		}(userId, planDetails.PlanName)
+
+		notificationsSent++
+	}
+
+	// Prepare response
+	response := map[string]interface{}{
+		"notificationsSent": notificationsSent,
+		"totalRequested":    len(req.UserIds),
+	}
+
+	if notificationsFailed > 0 {
+		response["notificationsFailed"] = notificationsFailed
+		response["message"] = fmt.Sprintf("Sent %d notifications successfully, %d failed", notificationsSent, notificationsFailed)
+	} else {
+		response["message"] = "Fee reminders sent successfully"
+	}
+
+	utils.SendSuccessResponse(w, http.StatusOK, response)
 }
 
 func derefString(s *string) string {
