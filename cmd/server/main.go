@@ -33,6 +33,7 @@ func main() {
 	api.NotificationHandlerDelegate(mux)
 	api.GymHandlerDelegate(mux)
 	api.EmployeeHandlerDelegate(mux)
+	api.MessagesHandlerDelegate(mux)
 
 	log.Println("🚀 Server running on http://localhost:" + config.GetAppPortInString())
 	err := http.ListenAndServe(":"+config.GetAppPortInString(), mux)

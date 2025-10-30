@@ -131,6 +131,14 @@ func GetAllEmployeesWithUserDetails(gymId int, excludeUserId *int) ([]models.Emp
 				u.gender,
 				u.profilePic,
 				u.roleId,
+				CASE u.roleId
+					WHEN 1 THEN 'owner'
+					WHEN 2 THEN 'manager'
+					WHEN 3 THEN 'staff'
+					WHEN 4 THEN 'trainer'
+					WHEN 5 THEN 'member'
+					ELSE 'unknown'
+				END as roleName,
 				u.isActive
 			FROM employees e
 			INNER JOIN users u ON e.userId = u.userId
@@ -152,6 +160,14 @@ func GetAllEmployeesWithUserDetails(gymId int, excludeUserId *int) ([]models.Emp
 				u.gender,
 				u.profilePic,
 				u.roleId,
+				CASE u.roleId
+					WHEN 1 THEN 'owner'
+					WHEN 2 THEN 'manager'
+					WHEN 3 THEN 'staff'
+					WHEN 4 THEN 'trainer'
+					WHEN 5 THEN 'member'
+					ELSE 'unknown'
+				END as roleName,
 				u.isActive
 			FROM employees e
 			INNER JOIN users u ON e.userId = u.userId
@@ -181,6 +197,7 @@ func GetAllEmployeesWithUserDetails(gymId int, excludeUserId *int) ([]models.Emp
 			&emp.Gender,
 			&emp.ProfilePic,
 			&emp.RoleId,
+			&emp.RoleName,
 			&emp.IsActive,
 		)
 		if err != nil {
@@ -218,6 +235,14 @@ func GetEmployeeWithUserDetailsByEmployeeId(empId int) (*models.EmployeeWithUser
 			u.gender,
 			u.profilePic,
 			u.roleId,
+			CASE u.roleId
+				WHEN 1 THEN 'owner'
+				WHEN 2 THEN 'manager'
+				WHEN 3 THEN 'staff'
+				WHEN 4 THEN 'trainer'
+				WHEN 5 THEN 'member'
+				ELSE 'unknown'
+			END as roleName,
 			u.isActive
 		FROM employees e
 		INNER JOIN users u ON e.userId = u.userId
@@ -234,6 +259,7 @@ func GetEmployeeWithUserDetailsByEmployeeId(empId int) (*models.EmployeeWithUser
 		&emp.Gender,
 		&emp.ProfilePic,
 		&emp.RoleId,
+		&emp.RoleName,
 		&emp.IsActive,
 	)
 	if err != nil {

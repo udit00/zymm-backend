@@ -21,6 +21,7 @@ type EmployeeWithUserDetails struct {
 	Gender         string  `json:"gender"`
 	ProfilePic     *string `json:"profilePic"`
 	RoleId         int     `json:"roleId"`
+	RoleName       string  `json:"roleName"`
 	IsActive       bool    `json:"isActive"`
 }
 
