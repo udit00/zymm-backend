@@ -33,3 +33,4 @@ type FeedbackRecord struct {
 	CreatedByProfilePic *string   `json:"profilePic"`
 	CreatedAt           time.Time `json:"createdAt"`
 }
+

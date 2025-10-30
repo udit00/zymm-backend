@@ -154,3 +154,4 @@ func GetFeedbackCountByGymId(gymId int) (*int, error) {
 	}
 	return &feedbackCount, nil
 }
+

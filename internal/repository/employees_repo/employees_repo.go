@@ -23,10 +23,10 @@ func InsertEmployees(employeeModel models.EmployeeModel) (*int, error) {
 	var id int
 	// Use OUTPUT INSERTED.employeeId to get the inserted id
 	err := db.DB.QueryRow(`
-        INSERT INTO employees (userId, gymId)
+        INSERT INTO employees (userId, gymId, createdBy)
         OUTPUT INSERTED.employeeId
-        VALUES (@p1, @p2)`,
-		employeeModel.UserId, employeeModel.GymId).Scan(&id)
+        VALUES (@p1, @p2, @p3)`,
+		employeeModel.UserId, employeeModel.GymId, employeeModel.CreatedBy).Scan(&id)
 	if err != nil {
 		LogService.LogError("❌ DB error inserting plan: ", err)
 		return nil, err
@@ -37,10 +37,10 @@ func InsertEmployees(employeeModel models.EmployeeModel) (*int, error) {
 func GetEmployeeByUserId(userId int) (*models.EmployeeModel, error) {
 	employeeModel := &models.EmployeeModel{}
 	err := db.DB.QueryRow(
-		`Select employeeId, userId, gymId, startedWorking
+		`Select employeeId, userId, gymId, createdBy, startedWorking
 		from employees
 		where userId = @p1
-		`, userId).Scan(&employeeModel.EmployeeId, &employeeModel.UserId, &employeeModel.GymId, &employeeModel.StartedWorking)
+		`, userId).Scan(&employeeModel.EmployeeId, &employeeModel.UserId, &employeeModel.GymId, &employeeModel.CreatedBy, &employeeModel.StartedWorking)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, sql.ErrNoRows
@@ -53,7 +53,7 @@ func GetEmployeeByUserId(userId int) (*models.EmployeeModel, error) {
 
 func GetAllEmployees(gymId int) ([]models.EmployeeModel, error) {
 	rows, err := db.DB.Query(`
-		Select employeeId, userId, gymId, startedWorking
+		Select employeeId, userId, gymId, createdBy, startedWorking
 		from employees
 		where gymId = @p1
 	`, gymId)
@@ -71,6 +71,7 @@ func GetAllEmployees(gymId int) ([]models.EmployeeModel, error) {
 			&currentEmp.EmployeeId,
 			&currentEmp.UserId,
 			&currentEmp.GymId,
+			&currentEmp.CreatedBy,
 			&currentEmp.StartedWorking,
 		)
 		if err != nil {
@@ -90,4 +91,21 @@ func GetAllEmployees(gymId int) ([]models.EmployeeModel, error) {
 	}
 
 	return employees, nil
+}
+
+func GetEmployeeByEmployeeId(empId int) (*models.EmployeeModel, error) {
+	employeeModel := &models.EmployeeModel{}
+	err := db.DB.QueryRow(
+		`Select employeeId, userId, gymId, createdBy, startedWorking
+		from employees
+		where employeeId = @p1
+		`, empId).Scan(&employeeModel.EmployeeId, &employeeModel.UserId, &employeeModel.GymId, &employeeModel.CreatedBy, &employeeModel.StartedWorking)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, sql.ErrNoRows
+		}
+		LogService.LogError("❌ DB error: ", err)
+		return nil, err
+	}
+	return employeeModel, nil
 }

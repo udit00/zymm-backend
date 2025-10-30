@@ -166,8 +166,8 @@ func changePassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if len(req.NewPassword) <= 3 {
-		utils.SendErrorResponse(w, http.StatusBadRequest, "New password is too short.")
+	if len(req.NewPassword) < 6 {
+		utils.SendErrorResponse(w, http.StatusBadRequest, "Password must be at least 6 characters.")
 		return
 	}
 

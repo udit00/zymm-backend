@@ -205,6 +205,17 @@ func requestMembershipByUserToGym(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	roleType := businessRoleType.GetRoleTypeFromInt(claims.RoleId)
+	if roleType == nil {
+		utils.SendErrorResponse(w, http.StatusExpectationFailed, "Role type not found.")
+		return
+	}
+
+	if *roleType != businessRoleType.RoleMember {
+		utils.SendErrorResponse(w, http.StatusBadRequest, "You cannot request a membership.")
+		return
+	}
+
 	planDetails, planDetailErr := membershipRepo.GetPlanById(req.PlanId)
 	if planDetailErr != nil || planDetails == nil {
 		utils.SendErrorResponse(w, http.StatusBadRequest, planDetailErr.Error())

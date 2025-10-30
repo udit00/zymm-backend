@@ -39,9 +39,60 @@ func ValidateRegistrationRequest(req models.RegistrationApiRequestModel) error {
 
 	if len(missing) > 0 {
 		return errors.New("Missing Required Fields: " + strings.Join(missing, ", "))
-	} else {
-		return nil
 	}
+
+	// Validate password length
+	if len(req.Password) < 6 {
+		return errors.New("Password must be at least 6 characters")
+	}
+
+	return nil
+}
+
+func ValidateEmployeeRegistrationRequest(req models.EmployeeRegistrationApiRequestModel) error {
+	missing := []string{}
+
+	if req.DisplayName == "" {
+		missing = append(missing, "displayName")
+	}
+	if req.Mobile == "" {
+		missing = append(missing, "mobile")
+	}
+	if req.Password == "" {
+		missing = append(missing, "password")
+	}
+	if req.Gender == "" {
+		missing = append(missing, "gender")
+	}
+	if req.AppVersion == "" {
+		missing = append(missing, "appVersion")
+	}
+	if req.UserAgent == "" {
+		missing = append(missing, "userAgent")
+	}
+	if req.LocationLat == "" {
+		missing = append(missing, "locationLat")
+	}
+	if req.LocationLong == "" {
+		missing = append(missing, "locationLong")
+	}
+	if req.IpAddress == "" {
+		missing = append(missing, "ipAddress")
+	}
+	if req.RoleId < 1 || req.RoleId > 5 {
+		missing = append(missing, "roleId")
+	}
+
+	if len(missing) > 0 {
+		return errors.New("Missing Required Fields: " + strings.Join(missing, ", "))
+	}
+
+	// Validate password length
+	if len(req.Password) < 6 {
+		return errors.New("Password must be at least 6 characters")
+	}
+
+	return nil
 }
 
 func ValidateOwnerRegistrationRequest(req models.RegistrationOwnerApiRequestModel) error {
@@ -95,7 +146,12 @@ func ValidateOwnerRegistrationRequest(req models.RegistrationOwnerApiRequestMode
 
 	if len(missing) > 0 {
 		return errors.New("Missing Required Fields: " + strings.Join(missing, ", "))
-	} else {
-		return nil
 	}
+
+	// Validate password length
+	if len(req.Password) < 6 {
+		return errors.New("Password must be at least 6 characters")
+	}
+
+	return nil
 }

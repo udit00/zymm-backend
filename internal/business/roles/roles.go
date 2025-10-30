@@ -25,3 +25,11 @@ func IsAllowedToViewAttendance(roleType businessRoles.RoleType) bool {
 func IsNotAllowedToViewAttendance(roleType businessRoles.RoleType) bool {
 	return !IsAllowedToViewAttendance(roleType)
 }
+
+func IsAllowedToManageEmployee(roleType businessRoles.RoleType) bool {
+	return roleType == businessRoles.RoleOwner || roleType == businessRoles.RoleManager
+}
+
+func IsNotAllowedToManageEmployees(roleType businessRoles.RoleType) bool {
+	return !IsAllowedToManageEmployee(roleType)
+}

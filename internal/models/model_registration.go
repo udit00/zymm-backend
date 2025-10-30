@@ -16,7 +16,6 @@ type RegistrationLogsRecord struct {
 	CreatedAt  time.Time `json:"createdAt"`
 }
 
-// RegistrationRequestModel represents the expected payload for user registration
 type RegistrationApiRequestModel struct {
 	DisplayPic   *string `json:"displayPic"`
 	DisplayName  string  `json:"displayName"`
@@ -29,6 +28,26 @@ type RegistrationApiRequestModel struct {
 	LocationLat  string  `json:"locationLat"`
 	LocationLong string  `json:"locationLong"`
 	IpAddress    string  `json:"ipAddress"`
+}
+
+type EmployeeRegistrationApiRequestModel struct {
+	DisplayPic   *string `json:"displayPic"`
+	DisplayName  string  `json:"displayName"`
+	Mobile       string  `json:"mobile"`
+	Email        *string `json:"email"`
+	Password     string  `json:"password"`
+	Gender       string  `json:"gender"`
+	AppVersion   string  `json:"appVersion"`
+	UserAgent    string  `json:"userAgent"`
+	LocationLat  string  `json:"locationLat"`
+	LocationLong string  `json:"locationLong"`
+	IpAddress    string  `json:"ipAddress"`
+	RoleId       int     `json:"roleId"`
+}
+
+type EmployeeRegistrationApiResponseModel struct {
+	Mobile   string `json:"Mobile"`
+	Password string `json:"employeePassword"`
 }
 
 type RegistrationOwnerApiRequestModel struct {
