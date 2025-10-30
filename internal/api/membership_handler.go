@@ -1093,7 +1093,7 @@ func sendFeeReminders(w http.ResponseWriter, r *http.Request) {
 
 		// Security check: Verify the plan belongs to the manager's/owner's gym
 		if *planDetails.GymId != gymId {
-			// LogService.LogError(fmt.Sprintf("❌ Access denied: User %d's plan does not belong to gym %d", userId), gymId), errors.New());
+			// LogService.LogError(fmt.Sprintf("Access denied: User %d's plan does not belong to gym %d", userId), gymId), errors.New());
 			notificationsFailed++
 			continue
 		}
