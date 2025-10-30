@@ -34,7 +34,7 @@ func UserHandlerDelegate(mux *http.ServeMux) {
 	mux.HandleFunc(userRouteAppended("changePassword"), AuthMiddleware(changePassword))
 	mux.HandleFunc(userRouteAppended("deleteProfile"), AuthMiddleware(deleteProfile))
 	mux.HandleFunc(userRouteAppended("uploadProfilePicture"), AuthMiddleware(uploadProfilePicture))
-	
+
 	// Serve static images
 	mux.Handle("/images/", http.StripPrefix("/images/", http.FileServer(http.Dir("./images"))))
 }
@@ -57,10 +57,15 @@ func getSelfData(w http.ResponseWriter, r *http.Request) {
 	var planDetails *models.PlanRecord
 	var planErr error
 
-	userData, err := userRepo.GetUserByUserId(currentUserId)
+	userData, err := userRepo.GetUserDetailsForSelfByUserId(currentUserId)
 	if err != nil {
 		LogService.LogError("❌ Error fetching user data: ", err)
 		utils.SendErrorResponse(w, http.StatusInternalServerError, "Error fetching user data: "+err.Error())
+		return
+	}
+
+	if !userData.IsActive {
+		utils.SendErrorResponse(w, http.StatusUnauthorized, "Forcing Log out")
 		return
 	}
 
@@ -362,7 +367,7 @@ func uploadProfilePicture(w http.ResponseWriter, r *http.Request) {
 			fileExt = ".jpg"
 		}
 	}
-	
+
 	timestamp := time.Now().Unix()
 	filename := fmt.Sprintf("user_%d_%d%s", currentUserId, timestamp, fileExt)
 	filepath := filepath.Join(imagesDir, filename)
@@ -383,7 +388,7 @@ func uploadProfilePicture(w http.ResponseWriter, r *http.Request) {
 		utils.SendErrorResponse(w, http.StatusInternalServerError, "Error saving file")
 		return
 	}
-	
+
 	LogService.LogMessage(fmt.Sprintf("✅ Image saved: %s (%.2f MB, %d bytes)", filename, float64(bytesWritten)/1024/1024, bytesWritten))
 
 	// Generate the URL for the image
@@ -393,7 +398,7 @@ func uploadProfilePicture(w http.ResponseWriter, r *http.Request) {
 	if r.TLS != nil {
 		scheme = "https"
 	}
-	
+
 	imageUrl := fmt.Sprintf("%s://%s/images/profile_pictures/%s", scheme, host, filename)
 
 	// Update user's profile picture in database
