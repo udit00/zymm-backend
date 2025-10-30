@@ -548,3 +548,40 @@ func GetGymMembersWithDetails(gymId int) ([]models.GymMemberWithDetails, error) 
 
 	return members, nil
 }
+
+// UpdateGym updates gym details (only gym information, not owner)
+func UpdateGym(req gymModels.UpdateGymRequest) error {
+	result, err := db.DB.Exec(`
+		UPDATE gym
+		SET 
+			gymName = @p1,
+			state = @p2,
+			city = @p3,
+			gymAddress = @p4,
+			contactNo = @p5,
+			officialEmail = @p6,
+			locationLat = @p7,
+			locationLong = @p8,
+			updatedAt = GETDATE()
+		WHERE gymId = @p9
+	`, req.GymName, req.State, req.City, req.GymAddress, req.ContactNo, req.OfficialEmail, req.LocationLat, req.LocationLong, req.GymId)
+
+	if err != nil {
+		LogService.LogError("❌ DB error updating gym: ", err)
+		return err
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		LogService.LogError("❌ Error getting rows affected: ", err)
+		return err
+	}
+
+	if rowsAffected == 0 {
+		LogService.LogMessage("⚠️ No gym was updated (gymId might not exist)")
+		return sql.ErrNoRows
+	}
+
+	LogService.LogMessage("✅ Gym updated successfully")
+	return nil
+}

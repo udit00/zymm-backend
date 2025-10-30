@@ -2,12 +2,14 @@ package api
 
 import (
 	"database/sql"
+	"encoding/json"
 	"net/http"
 	"strconv"
 
 	bussinessAuth "zymm/internal/business/auth"
 	businessRoles "zymm/internal/business/roles"
 	businessRoleType "zymm/internal/business/roles/roles_type"
+	gymModels "zymm/internal/models/gym_models"
 	employeesrepo "zymm/internal/repository/employees_repo"
 	gymRepo "zymm/internal/repository/gym_repo"
 	LogService "zymm/internal/service/log_service"
@@ -27,6 +29,7 @@ func GymHandlerDelegate(mux *http.ServeMux) {
 	mux.HandleFunc(gymRouteAppended("getGymData"), AuthMiddleware(getGymData))
 	mux.HandleFunc(gymRouteAppended("activeMembers"), AuthMiddleware(getActiveGymMembers))
 	mux.HandleFunc(gymRouteAppended("getGymMembers"), AuthMiddleware(getGymMembers))
+	mux.HandleFunc(gymRouteAppended("updateGym"), AuthMiddleware(updateGym))
 }
 
 func getAllGyms(w http.ResponseWriter, r *http.Request) {
@@ -296,4 +299,98 @@ func getGymMembers(w http.ResponseWriter, r *http.Request) {
 	}
 
 	utils.SendSuccessResponse(w, http.StatusOK, members)
+}
+
+// updateGym updates gym details (only gym information, not owner)
+// Available to owners and managers only
+func updateGym(w http.ResponseWriter, r *http.Request) {
+	LogService.LogMessage("updateGym was called")
+
+	if r.Method != http.MethodPost {
+		utils.SendErrorResponse(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
+	// Get claims from context
+	claims, ok := r.Context().Value(ctxClaimDataKey).(*bussinessAuth.MyCustomClaims)
+	if !ok || claims == nil {
+		utils.SendErrorResponse(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+
+	currentUserId := claims.UserId
+	roleType := businessRoleType.RoleType(claims.RoleId)
+
+	// Check if user has permission to update gym
+	if businessRoles.IsNotAllowedToManageEmployees(roleType) {
+		utils.SendErrorResponse(w, http.StatusForbidden, "Access Denied: Only owners and managers can update gym")
+		return
+	}
+
+	// Parse request body
+	var req gymModels.UpdateGymRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		utils.SendErrorResponse(w, http.StatusBadRequest, "Invalid request body: "+err.Error())
+		return
+	}
+
+	// Validate gym ID
+	if req.GymId <= 0 {
+		utils.SendErrorResponse(w, http.StatusBadRequest, "Invalid gym ID")
+		return
+	}
+
+	// Get gymId based on user role and verify ownership
+	var userGymId int
+	switch roleType {
+	case businessRoleType.RoleOwner:
+		// Owner - verify ownership
+		gym, err := gymRepo.GetGymWithAdditionalDataByOwnerId(currentUserId)
+		if err != nil {
+			if err == sql.ErrNoRows {
+				utils.SendErrorResponse(w, http.StatusNotFound, "No gym found for this owner")
+				return
+			}
+			utils.SendErrorResponse(w, http.StatusInternalServerError, "Error fetching gym info: "+err.Error())
+			return
+		}
+		userGymId = gym.GymId
+	case businessRoleType.RoleManager:
+		// Manager - verify through employee table
+		employee, err := employeesrepo.GetEmployeeWithUserDetailsByEmployeeId(currentUserId)
+		if err != nil {
+			if err == sql.ErrNoRows {
+				utils.SendErrorResponse(w, http.StatusNotFound, "No employee record found for this manager")
+				return
+			}
+			utils.SendErrorResponse(w, http.StatusInternalServerError, "Error fetching employee info: "+err.Error())
+			return
+		}
+		if !employee.IsActive {
+			utils.SendErrorResponse(w, http.StatusForbidden, "You are not an active user")
+			return
+		}
+		userGymId = employee.GymId
+	default:
+		utils.SendErrorResponse(w, http.StatusForbidden, "Access Denied")
+		return
+	}
+
+	// Verify user is updating their own gym
+	if req.GymId != userGymId {
+		utils.SendErrorResponse(w, http.StatusForbidden, "Access Denied: You can only update your own gym")
+		return
+	}
+
+	// Update gym details
+	if err := gymRepo.UpdateGym(req); err != nil {
+		if err == sql.ErrNoRows {
+			utils.SendErrorResponse(w, http.StatusNotFound, "Gym not found")
+			return
+		}
+		utils.SendErrorResponse(w, http.StatusInternalServerError, "Error updating gym: "+err.Error())
+		return
+	}
+
+	utils.SendSuccessResponse(w, http.StatusOK, "Gym updated successfully")
 }

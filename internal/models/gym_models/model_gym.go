@@ -35,3 +35,15 @@ type GymRecordWithAdditionalData struct {
 	ManagersCount int     `json:"managersCount"`
 	ActivePlans   int     `json:"activePlans"`
 }
+
+type UpdateGymRequest struct {
+	GymId         int    `json:"gymId"`
+	GymName       string `json:"gymName"`
+	State         string `json:"state"`
+	City          string `json:"city"`
+	GymAddress    string `json:"gymAddress"`
+	ContactNo     string `json:"contactNo"`
+	OfficialEmail string `json:"officialEmail"`
+	LocationLat   string `json:"locationLat"`
+	LocationLong  string `json:"locationLong"`
+}
