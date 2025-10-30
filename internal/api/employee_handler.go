@@ -1,6 +1,7 @@
 package api
 
 import (
+	"database/sql"
 	"encoding/json"
 	"net/http"
 	bussinessAuth "zymm/internal/business/auth"
@@ -241,6 +242,10 @@ func getAllEmployeeByGymId(w http.ResponseWriter, r *http.Request) {
 
 	employeesData, employeesDataErr := employeesRepo.GetAllEmployeesWithUserDetails(gymId, excludeUserId)
 	if employeesDataErr != nil {
+		if employeesDataErr == sql.ErrNoRows {
+			utils.SendErrorResponse(w, http.StatusBadRequest, "No Data found.")
+			return
+		}
 		utils.SendErrorResponse(w, http.StatusExpectationFailed, employeesDataErr.Error())
 		return
 	}
@@ -303,6 +308,10 @@ func getEmployeeById(w http.ResponseWriter, r *http.Request) {
 
 	employeeData, employeeDataErr := employeesRepo.GetEmployeeWithUserDetailsByEmployeeId(employeeId)
 	if employeeDataErr != nil {
+		if employeeDataErr == sql.ErrNoRows {
+			utils.SendErrorResponse(w, http.StatusBadRequest, "No Data found.")
+			return
+		}
 		utils.SendErrorResponse(w, http.StatusExpectationFailed, employeeDataErr.Error())
 		return
 	}

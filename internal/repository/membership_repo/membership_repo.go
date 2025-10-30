@@ -95,7 +95,8 @@ func GetPlansByGymId(gymId int) ([]models.PlanRecord, error) {
 	rows, err := db.DB.Query(`
 		SELECT planId, planBanner, planName, planDesc, planPrice, planDuration, isActive, createdBy, createdAt, gymId
 		FROM plans
-		WHERE gymId = @p1`,
+		WHERE gymId = @p1
+		ORDER BY createdAt DESC`,
 		gymId)
 
 	if err != nil {
@@ -400,4 +401,56 @@ func GetAllMembershipPlansRequest(gymId int, filterBy MembershipStatus) ([]model
 	}
 
 	return memberships, nil
+}
+
+// DeactivatePlan sets isActive to 0 for a plan
+func DeactivatePlan(planId int) error {
+	result, err := db.DB.Exec(`
+		UPDATE plans
+		SET isActive = 0
+		WHERE planId = @p1 AND isActive = 1
+	`, planId)
+	
+	if err != nil {
+		LogService.LogError("❌ DB error deactivating plan: ", err)
+		return err
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		LogService.LogError("❌ DB error getting rows affected: ", err)
+		return err
+	}
+
+	if rowsAffected == 0 {
+		LogService.LogMessage("⚠️ No rows updated - plan may already be inactive or not found")
+	}
+
+	return nil
+}
+
+// ActivatePlan sets isActive to 1 for a plan
+func ActivatePlan(planId int) error {
+	result, err := db.DB.Exec(`
+		UPDATE plans
+		SET isActive = 1
+		WHERE planId = @p1 AND isActive = 0
+	`, planId)
+	
+	if err != nil {
+		LogService.LogError("❌ DB error activating plan: ", err)
+		return err
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		LogService.LogError("❌ DB error getting rows affected: ", err)
+		return err
+	}
+
+	if rowsAffected == 0 {
+		LogService.LogMessage("⚠️ No rows updated - plan may already be active or not found")
+	}
+
+	return nil
 }

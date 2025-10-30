@@ -38,6 +38,9 @@ func MembershipHandlerDelegate(mux *http.ServeMux) {
 	mux.HandleFunc(membershipRouteAppended("takeActionOnMembership"), AuthMiddleware(takeActionOnMembership))
 	mux.HandleFunc(membershipRouteAppended("getPlanDetails"), AuthMiddleware(getPlanDetails))
 	mux.HandleFunc(membershipRouteAppended("getAllPlansByGymId"), AuthMiddleware(getAllPlansByGymId))
+	mux.HandleFunc(membershipRouteAppended("getAllPlansForManagement"), AuthMiddleware(getAllPlansForManagement))
+	mux.HandleFunc(membershipRouteAppended("deactivatePlan"), AuthMiddleware(deactivatePlan))
+	mux.HandleFunc(membershipRouteAppended("activatePlan"), AuthMiddleware(activatePlan))
 	mux.HandleFunc(membershipRouteAppended("cancelMembershipRequest"), AuthMiddleware(cancelMembershipRequestByUserToGym))
 }
 
@@ -489,6 +492,10 @@ func allMembershipHistoryForGymOwnerAndManagers(w http.ResponseWriter, r *http.R
 
 	memberships, membershipHistoryErr := membershipRepo.GetAllMembershipPlansRequest(gymId, filterType)
 	if membershipHistoryErr != nil {
+		if membershipHistoryErr == sql.ErrNoRows {
+			utils.SendErrorResponse(w, http.StatusBadRequest, "No Data found.")
+			return
+		}
 		utils.SendErrorResponse(w, http.StatusBadRequest, membershipHistoryErr.Error())
 		return
 	}
@@ -529,6 +536,10 @@ func getAllPlansByGymId(w http.ResponseWriter, r *http.Request) {
 
 	planDetails, planDetailsErr := membershipRepo.GetPlansByGymId(gymId)
 	if planDetailsErr != nil {
+		if planDetailsErr == sql.ErrNoRows {
+			utils.SendErrorResponse(w, http.StatusBadRequest, "No Data found.")
+			return
+		}
 		utils.SendErrorResponse(w, http.StatusBadRequest, planDetailsErr.Error())
 		return
 	}
@@ -569,6 +580,10 @@ func getPlanDetails(w http.ResponseWriter, r *http.Request) {
 
 	planDetails, planDetailsErr := membershipRepo.GetPlanById(planId)
 	if planDetailsErr != nil {
+		if planDetailsErr == sql.ErrNoRows {
+			utils.SendErrorResponse(w, http.StatusBadRequest, "No Data found.")
+			return
+		}
 		utils.SendErrorResponse(w, http.StatusBadRequest, planDetailsErr.Error())
 		return
 	}
@@ -678,6 +693,245 @@ func takeActionOnMembership(w http.ResponseWriter, r *http.Request) {
 		actionTakenId int
 	}
 	utils.SendSuccessResponse(w, http.StatusOK, finalResponse{actionTakenId: *actionTakenId})
+}
+
+func getAllPlansForManagement(w http.ResponseWriter, r *http.Request) {
+	LogService.LogMessage("getAllPlansForManagement was called")
+	if r.Method != http.MethodGet {
+		utils.SendErrorResponse(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
+	claims, ok := r.Context().Value(ctxClaimDataKey).(*bussinessAuth.MyCustomClaims)
+	if !ok || claims == nil {
+		utils.SendErrorResponse(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+
+	currentUserId := claims.UserId
+	if currentUserId < 0 {
+		utils.SendErrorResponse(w, http.StatusUnauthorized, "invalid user id in context")
+		return
+	}
+
+	roleTypePtr := businessRoleType.GetRoleTypeFromInt(claims.RoleId)
+	if roleTypePtr == nil {
+		utils.SendErrorResponse(w, http.StatusUnauthorized, "Access Denied")
+		return
+	}
+
+	roleType := *roleTypePtr
+
+	if roleType != businessRoleType.RoleOwner && roleType != businessRoleType.RoleManager {
+		utils.SendErrorResponse(w, http.StatusForbidden, "Access Denied. Only owners and managers can view all plans.")
+		return
+	}
+
+	var gymId int
+	if roleType == businessRoleType.RoleOwner {
+		gymDetails, gymDetailsErr := gymRepo.GetGymWithAdditionalDataByOwnerId(claims.UserId)
+		if gymDetailsErr != nil {
+			utils.SendErrorResponse(w, http.StatusInternalServerError, gymDetailsErr.Error())
+			return
+		}
+		gymId = gymDetails.GymId
+	} else {
+		employeeDetails, employeeDetailsErr := employeesRepo.GetEmployeeByUserId(claims.UserId)
+		if employeeDetailsErr != nil {
+			utils.SendErrorResponse(w, http.StatusInternalServerError, employeeDetailsErr.Error())
+			return
+		}
+		gymId = employeeDetails.GymId
+	}
+
+	if gymId <= 0 {
+		utils.SendErrorResponse(w, http.StatusExpectationFailed, "Gym Id not found for the user.")
+		return
+	}
+
+	planDetails, planDetailsErr := membershipRepo.GetPlansByGymId(gymId)
+	if planDetailsErr != nil {
+		if planDetailsErr == sql.ErrNoRows {
+			utils.SendErrorResponse(w, http.StatusBadRequest, "No Data found.")
+			return
+		}
+		utils.SendErrorResponse(w, http.StatusBadRequest, planDetailsErr.Error())
+		return
+	}
+
+	utils.SendSuccessResponse(w, http.StatusOK, planDetails)
+}
+
+func deactivatePlan(w http.ResponseWriter, r *http.Request) {
+	LogService.LogMessage("deactivatePlan was called")
+	if r.Method != http.MethodPost {
+		utils.SendErrorResponse(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
+	var req struct {
+		PlanId int `json:"planId"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		utils.SendErrorResponse(w, http.StatusBadRequest, "Invalid request payload")
+		return
+	}
+
+	claims, ok := r.Context().Value(ctxClaimDataKey).(*bussinessAuth.MyCustomClaims)
+	if !ok || claims == nil {
+		utils.SendErrorResponse(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+
+	currentUserId := claims.UserId
+	if currentUserId < 0 {
+		utils.SendErrorResponse(w, http.StatusUnauthorized, "invalid user id in context")
+		return
+	}
+
+	roleTypePtr := businessRoleType.GetRoleTypeFromInt(claims.RoleId)
+	if roleTypePtr == nil {
+		utils.SendErrorResponse(w, http.StatusUnauthorized, "Access Denied")
+		return
+	}
+
+	roleType := *roleTypePtr
+
+	// Only owners and managers can deactivate plans
+	if roleType != businessRoleType.RoleOwner && roleType != businessRoleType.RoleManager {
+		utils.SendErrorResponse(w, http.StatusForbidden, "Access Denied. Only owners and managers can deactivate plans.")
+		return
+	}
+
+	// Verify plan exists and get gym ID
+	planDetails, planDetailsErr := membershipRepo.GetPlanById(req.PlanId)
+	if planDetailsErr != nil {
+		utils.SendErrorResponse(w, http.StatusBadRequest, "Plan not found: "+planDetailsErr.Error())
+		return
+	}
+
+	if planDetails == nil {
+		utils.SendErrorResponse(w, http.StatusBadRequest, "Plan not found.")
+		return
+	}
+
+	// Verify user has access to this gym's plans
+	var userGymId int
+	if roleType == businessRoleType.RoleOwner {
+		gymDetails, gymDetailsErr := gymRepo.GetGymWithAdditionalDataByOwnerId(claims.UserId)
+		if gymDetailsErr != nil {
+			utils.SendErrorResponse(w, http.StatusInternalServerError, gymDetailsErr.Error())
+			return
+		}
+		userGymId = gymDetails.GymId
+	} else {
+		employeeDetails, employeeDetailsErr := employeesRepo.GetEmployeeByUserId(claims.UserId)
+		if employeeDetailsErr != nil {
+			utils.SendErrorResponse(w, http.StatusInternalServerError, employeeDetailsErr.Error())
+			return
+		}
+		userGymId = employeeDetails.GymId
+	}
+
+	if *planDetails.GymId != userGymId {
+		utils.SendErrorResponse(w, http.StatusForbidden, "Access Denied. You can only manage plans for your gym.")
+		return
+	}
+
+	// Deactivate the plan
+	deactivateErr := membershipRepo.DeactivatePlan(req.PlanId)
+	if deactivateErr != nil {
+		utils.SendErrorResponse(w, http.StatusInternalServerError, "Failed to deactivate plan: "+deactivateErr.Error())
+		return
+	}
+
+	utils.SendSuccessResponse(w, http.StatusOK, map[string]string{"message": "Plan deactivated successfully"})
+}
+
+func activatePlan(w http.ResponseWriter, r *http.Request) {
+	LogService.LogMessage("activatePlan was called")
+	if r.Method != http.MethodPost {
+		utils.SendErrorResponse(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
+	var req struct {
+		PlanId int `json:"planId"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		utils.SendErrorResponse(w, http.StatusBadRequest, "Invalid request payload")
+		return
+	}
+
+	claims, ok := r.Context().Value(ctxClaimDataKey).(*bussinessAuth.MyCustomClaims)
+	if !ok || claims == nil {
+		utils.SendErrorResponse(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+
+	currentUserId := claims.UserId
+	if currentUserId < 0 {
+		utils.SendErrorResponse(w, http.StatusUnauthorized, "invalid user id in context")
+		return
+	}
+
+	roleTypePtr := businessRoleType.GetRoleTypeFromInt(claims.RoleId)
+	if roleTypePtr == nil {
+		utils.SendErrorResponse(w, http.StatusUnauthorized, "Access Denied")
+		return
+	}
+
+	roleType := *roleTypePtr
+
+	// Only owners and managers can activate plans
+	if roleType != businessRoleType.RoleOwner && roleType != businessRoleType.RoleManager {
+		utils.SendErrorResponse(w, http.StatusForbidden, "Access Denied. Only owners and managers can activate plans.")
+		return
+	}
+
+	// Verify plan exists and get gym ID
+	planDetails, planDetailsErr := membershipRepo.GetPlanById(req.PlanId)
+	if planDetailsErr != nil {
+		utils.SendErrorResponse(w, http.StatusBadRequest, "Plan not found: "+planDetailsErr.Error())
+		return
+	}
+
+	if planDetails == nil {
+		utils.SendErrorResponse(w, http.StatusBadRequest, "Plan not found.")
+		return
+	}
+
+	// Verify user has access to this gym's plans
+	var userGymId int
+	if roleType == businessRoleType.RoleOwner {
+		gymDetails, gymDetailsErr := gymRepo.GetGymWithAdditionalDataByOwnerId(claims.UserId)
+		if gymDetailsErr != nil {
+			utils.SendErrorResponse(w, http.StatusInternalServerError, gymDetailsErr.Error())
+			return
+		}
+		userGymId = gymDetails.GymId
+	} else {
+		employeeDetails, employeeDetailsErr := employeesRepo.GetEmployeeByUserId(claims.UserId)
+		if employeeDetailsErr != nil {
+			utils.SendErrorResponse(w, http.StatusInternalServerError, employeeDetailsErr.Error())
+			return
+		}
+		userGymId = employeeDetails.GymId
+	}
+
+	if *planDetails.GymId != userGymId {
+		utils.SendErrorResponse(w, http.StatusForbidden, "Access Denied. You can only manage plans for your gym.")
+		return
+	}
+
+	// Activate the plan
+	activateErr := membershipRepo.ActivatePlan(req.PlanId)
+	if activateErr != nil {
+		utils.SendErrorResponse(w, http.StatusInternalServerError, "Failed to activate plan: "+activateErr.Error())
+		return
+	}
+
+	utils.SendSuccessResponse(w, http.StatusOK, map[string]string{"message": "Plan activated successfully"})
 }
 
 func derefString(s *string) string {
