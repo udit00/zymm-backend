@@ -332,9 +332,9 @@ func uploadProfilePicture(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Validate file size (max 5MB)
-	if handler.Size > 5<<20 {
-		utils.SendErrorResponse(w, http.StatusBadRequest, "File size exceeds 5MB limit")
+	// Validate file size (max 10MB)
+	if handler.Size > 10<<20 {
+		utils.SendErrorResponse(w, http.StatusBadRequest, "File size exceeds 10MB limit")
 		return
 	}
 
@@ -377,11 +377,14 @@ func uploadProfilePicture(w http.ResponseWriter, r *http.Request) {
 	defer dst.Close()
 
 	// Copy the uploaded file to the destination file
-	if _, err := io.Copy(dst, file); err != nil {
+	bytesWritten, err := io.Copy(dst, file)
+	if err != nil {
 		LogService.LogError("❌ Error copying file: ", err)
 		utils.SendErrorResponse(w, http.StatusInternalServerError, "Error saving file")
 		return
 	}
+	
+	LogService.LogMessage(fmt.Sprintf("✅ Image saved: %s (%.2f MB, %d bytes)", filename, float64(bytesWritten)/1024/1024, bytesWritten))
 
 	// Generate the URL for the image
 	// Get the host from the request

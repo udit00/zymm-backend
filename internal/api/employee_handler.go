@@ -26,7 +26,8 @@ func EmployeeHandlerDelegate(mux *http.ServeMux) {
 	mux.HandleFunc(routeAppended("create"), AuthMiddleware(createEmployee))
 	mux.HandleFunc(routeAppended("getEmployeeById"), AuthMiddleware(getEmployeeById))
 	mux.HandleFunc(routeAppended("getAllEmployeeByGymId"), AuthMiddleware(getAllEmployeeByGymId))
-	// mux.HandleFunc(routeAppended("removeEmployee"), AuthMiddleware(removeEmployee))
+	mux.HandleFunc(routeAppended("deactivateEmployee"), AuthMiddleware(deactivateEmployee))
+	mux.HandleFunc(routeAppended("activateEmployee"), AuthMiddleware(activateEmployee))
 }
 
 func createEmployee(w http.ResponseWriter, r *http.Request) {
@@ -232,7 +233,13 @@ func getAllEmployeeByGymId(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	employeesData, employeesDataErr := employeesRepo.GetAllEmployees(gymId)
+	// For managers, exclude their own record from the list
+	var excludeUserId *int
+	if roleType == businessRoleType.RoleManager {
+		excludeUserId = &currentUserId
+	}
+
+	employeesData, employeesDataErr := employeesRepo.GetAllEmployeesWithUserDetails(gymId, excludeUserId)
 	if employeesDataErr != nil {
 		utils.SendErrorResponse(w, http.StatusExpectationFailed, employeesDataErr.Error())
 		return
@@ -294,7 +301,7 @@ func getEmployeeById(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	employeeData, employeeDataErr := employeesRepo.GetEmployeeByEmployeeId(employeeId)
+	employeeData, employeeDataErr := employeesRepo.GetEmployeeWithUserDetailsByEmployeeId(employeeId)
 	if employeeDataErr != nil {
 		utils.SendErrorResponse(w, http.StatusExpectationFailed, employeeDataErr.Error())
 		return
@@ -306,4 +313,175 @@ func getEmployeeById(w http.ResponseWriter, r *http.Request) {
 	}
 
 	utils.SendSuccessResponse(w, http.StatusOK, employeeData)
+}
+
+func deactivateEmployee(w http.ResponseWriter, r *http.Request) {
+	LogService.LogMessage("deactivateEmployee was called")
+	if r.Method != http.MethodPost {
+		utils.SendErrorResponse(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
+	claims, ok := r.Context().Value(ctxClaimDataKey).(*bussinessAuth.MyCustomClaims)
+	if !ok || claims == nil {
+		utils.SendErrorResponse(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+
+	currentUserId := claims.UserId
+	if currentUserId < 0 {
+		utils.SendErrorResponse(w, http.StatusUnauthorized, "invalid user id in context")
+		return
+	}
+
+	// Decode JSON body
+	var req models.DeactivateEmployeeRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		utils.SendErrorResponse(w, http.StatusBadRequest, "Invalid request payload")
+		return
+	}
+
+	if req.EmployeeId <= 0 {
+		utils.SendErrorResponse(w, http.StatusBadRequest, "Invalid employee ID")
+		return
+	}
+
+	roleTypePtr := businessRoleType.GetRoleTypeFromInt(claims.RoleId)
+	if roleTypePtr == nil {
+		utils.SendErrorResponse(w, http.StatusExpectationFailed, "Invalid role")
+		return
+	}
+
+	roleType := *roleTypePtr
+
+	if businessRoles.IsNotAllowedToManageEmployees(roleType) {
+		utils.SendErrorResponse(w, http.StatusUnauthorized, "Access Denied.")
+		return
+	}
+
+	// Get the employee details to check their role
+	employeeData, employeeDataErr := employeesRepo.GetEmployeeWithUserDetailsByEmployeeId(req.EmployeeId)
+	if employeeDataErr != nil {
+		utils.SendErrorResponse(w, http.StatusExpectationFailed, employeeDataErr.Error())
+		return
+	}
+
+	if employeeData == nil {
+		utils.SendErrorResponse(w, http.StatusExpectationFailed, "Employee not found.")
+		return
+	}
+
+	// Check if the employee is a manager
+	employeeRoleTypePtr := businessRoleType.GetRoleTypeFromInt(employeeData.RoleId)
+	if employeeRoleTypePtr == nil {
+		utils.SendErrorResponse(w, http.StatusExpectationFailed, "Invalid employee role")
+		return
+	}
+
+	employeeRoleType := *employeeRoleTypePtr
+
+	// Managers can only deactivate non-manager employees
+	if roleType == businessRoleType.RoleManager && employeeRoleType == businessRoleType.RoleManager {
+		utils.SendErrorResponse(w, http.StatusUnauthorized, "Managers cannot deactivate other managers. Only owners can deactivate managers.")
+		return
+	}
+
+	// Deactivate the user
+	deactivateErr := userRepo.DeactivateUser(employeeData.UserId)
+	if deactivateErr != nil {
+		utils.SendErrorResponse(w, http.StatusExpectationFailed, "Failed to deactivate employee: "+deactivateErr.Error())
+		return
+	}
+
+	utils.SendSuccessResponse(w, http.StatusOK, map[string]string{
+		"message": "Employee deactivated successfully",
+	})
+}
+
+func activateEmployee(w http.ResponseWriter, r *http.Request) {
+	LogService.LogMessage("activateEmployee was called")
+	if r.Method != http.MethodPost {
+		utils.SendErrorResponse(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
+	claims, ok := r.Context().Value(ctxClaimDataKey).(*bussinessAuth.MyCustomClaims)
+	if !ok || claims == nil {
+		utils.SendErrorResponse(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+
+	currentUserId := claims.UserId
+	if currentUserId < 0 {
+		utils.SendErrorResponse(w, http.StatusUnauthorized, "invalid user id in context")
+		return
+	}
+
+	// Decode JSON body
+	var req models.ActivateEmployeeRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		utils.SendErrorResponse(w, http.StatusBadRequest, "Invalid request payload")
+		return
+	}
+
+	if req.EmployeeId <= 0 {
+		utils.SendErrorResponse(w, http.StatusBadRequest, "Invalid employee ID")
+		return
+	}
+
+	roleTypePtr := businessRoleType.GetRoleTypeFromInt(claims.RoleId)
+	if roleTypePtr == nil {
+		utils.SendErrorResponse(w, http.StatusExpectationFailed, "Invalid role")
+		return
+	}
+
+	roleType := *roleTypePtr
+
+	if businessRoles.IsNotAllowedToManageEmployees(roleType) {
+		utils.SendErrorResponse(w, http.StatusUnauthorized, "Access Denied.")
+		return
+	}
+
+	// Get the employee details to check their role
+	employeeData, employeeDataErr := employeesRepo.GetEmployeeWithUserDetailsByEmployeeId(req.EmployeeId)
+	if employeeDataErr != nil {
+		utils.SendErrorResponse(w, http.StatusExpectationFailed, employeeDataErr.Error())
+		return
+	}
+
+	if employeeData == nil {
+		utils.SendErrorResponse(w, http.StatusExpectationFailed, "Employee not found.")
+		return
+	}
+
+	if employeeData.IsActive {
+		utils.SendErrorResponse(w, http.StatusExpectationFailed, "Employee is already active.")
+		return
+	}
+
+	// Check if the employee is a manager
+	employeeRoleTypePtr := businessRoleType.GetRoleTypeFromInt(employeeData.RoleId)
+	if employeeRoleTypePtr == nil {
+		utils.SendErrorResponse(w, http.StatusExpectationFailed, "Invalid employee role")
+		return
+	}
+
+	employeeRoleType := *employeeRoleTypePtr
+
+	// Managers can only activate non-manager employees
+	if roleType == businessRoleType.RoleManager && employeeRoleType == businessRoleType.RoleManager {
+		utils.SendErrorResponse(w, http.StatusUnauthorized, "Managers cannot activate other managers. Only owners can activate managers.")
+		return
+	}
+
+	// Activate the user
+	activateErr := userRepo.ActivateUser(employeeData.UserId)
+	if activateErr != nil {
+		utils.SendErrorResponse(w, http.StatusExpectationFailed, "Failed to activate employee: "+activateErr.Error())
+		return
+	}
+
+	utils.SendSuccessResponse(w, http.StatusOK, map[string]string{
+		"message": "Employee activated successfully",
+	})
 }

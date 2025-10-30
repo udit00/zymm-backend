@@ -118,3 +118,55 @@ func UpdateUserProfilePicture(userId int, profilePicUrl string) error {
 
 	return nil
 }
+
+// DeactivateUser sets isActive to 0 for a user
+func DeactivateUser(userId int) error {
+	result, err := db.DB.Exec(`
+		UPDATE users 
+		SET isActive = 0, updatedAt = GETDATE()
+		WHERE userId = @p1 and isActive = 1
+	`, userId)
+
+	if err != nil {
+		LogService.LogError("❌ DB error deactivating user: ", err)
+		return err
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		LogService.LogError("❌ DB error getting rows affected: ", err)
+		return err
+	}
+
+	if rowsAffected == 0 {
+		return sql.ErrNoRows
+	}
+
+	return nil
+}
+
+// ActivateUser sets isActive to 1 for a user
+func ActivateUser(userId int) error {
+	result, err := db.DB.Exec(`
+		UPDATE users 
+		SET isActive = 1, updatedAt = GETDATE()
+		WHERE userId = @p1 and isActive = 0
+	`, userId)
+
+	if err != nil {
+		LogService.LogError("❌ DB error activating user: ", err)
+		return err
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		LogService.LogError("❌ DB error getting rows affected: ", err)
+		return err
+	}
+
+	if rowsAffected == 0 {
+		return sql.ErrNoRows
+	}
+
+	return nil
+}
