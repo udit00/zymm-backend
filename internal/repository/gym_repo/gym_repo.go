@@ -466,3 +466,85 @@ func GetGymOwnerAndManagers(gymId int) ([]int, error) {
 
 	return allUsers, nil
 }
+
+// GetGymMembersWithDetails returns all gym members with their active plans and feedback ratings
+func GetGymMembersWithDetails(gymId int) ([]models.GymMemberWithDetails, error) {
+	rows, err := db.DB.Query(`
+		SELECT 
+			u.userId,
+			u.userName,
+			u.mobile,
+			u.email,
+			u.gender,
+			u.profilePic,
+			um.membershipId,
+			p.planId,
+			p.planName,
+			p.planPrice,
+			p.planDuration,
+			um.startDate,
+			um.endDate,
+			um.membershipStatus,
+			feedback.feedbackId,
+			feedback.rating,
+			feedback.comments,
+			feedback.createdAt as feedbackDate
+		FROM userMemberships um
+		INNER JOIN users u ON u.userId = um.userId
+		INNER JOIN plans p ON p.planId = um.planId
+		outer apply (select top 1 feedbackId, rating, comments, createdAt from feedback where createdBy = u.userId AND gymId = p.gymId order by feedback.createdAt desc) feedback
+		WHERE p.gymId = @p1
+		AND um.isActive = 1
+		AND um.membershipStatus = 'A'
+		AND um.startDate <= GETDATE()
+		AND um.endDate >= GETDATE()
+		AND u.roleId = 5
+		ORDER BY u.userName ASC
+	`, gymId)
+
+	if err != nil {
+		LogService.LogError("❌ DB query error fetching gym members: ", err)
+		return nil, err
+	}
+	defer rows.Close()
+
+	members := []models.GymMemberWithDetails{}
+
+	for rows.Next() {
+		member := models.GymMemberWithDetails{}
+		err := rows.Scan(
+			&member.UserId,
+			&member.UserName,
+			&member.Mobile,
+			&member.Email,
+			&member.Gender,
+			&member.ProfilePic,
+			&member.MembershipId,
+			&member.PlanId,
+			&member.PlanName,
+			&member.PlanPrice,
+			&member.PlanDuration,
+			&member.StartDate,
+			&member.EndDate,
+			&member.MembershipStatus,
+			&member.FeedbackId,
+			&member.Rating,
+			&member.Comments,
+			&member.FeedbackDate,
+		)
+
+		if err != nil {
+			LogService.LogError("❌ DB scan error fetching gym members: ", err)
+			return nil, err
+		}
+
+		members = append(members, member)
+	}
+
+	if err := rows.Err(); err != nil {
+		LogService.LogError("❌ DB rows iteration error fetching gym members: ", err)
+		return nil, err
+	}
+
+	return members, nil
+}
