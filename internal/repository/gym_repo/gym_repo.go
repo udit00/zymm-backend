@@ -19,7 +19,7 @@ func GetActiveUserIdsForGym(gymId int) ([]int, error) {
 		and um.endDate >= getDate()
 		and p.gymId = @p1`, gymId)
 	if err != nil {
-		LogService.LogError("❌ DB query error fetching active user ids: ", err)
+		LogService.LogError(" DB query error fetching active user ids: ", err)
 		return nil, err
 	}
 	defer rows.Close()
@@ -28,14 +28,14 @@ func GetActiveUserIdsForGym(gymId int) ([]int, error) {
 	for rows.Next() {
 		var id int
 		if scanErr := rows.Scan(&id); scanErr != nil {
-			LogService.LogError("❌ DB scan error fetching active user ids: ", scanErr)
+			LogService.LogError(" DB scan error fetching active user ids: ", scanErr)
 			return nil, scanErr
 		}
 		userIds = append(userIds, id)
 	}
 
 	if rowsErr := rows.Err(); rowsErr != nil {
-		LogService.LogError("❌ DB rows iteration error fetching active user ids: ", rowsErr)
+		LogService.LogError(" DB rows iteration error fetching active user ids: ", rowsErr)
 		return nil, rowsErr
 	}
 
@@ -65,7 +65,7 @@ func GetActiveMembershipDetailsForGym(gymId int) ([]models.ActiveMembershipUser,
 		and um.endDate >= getDate()
 		and p.gymId = @p1`, gymId)
 	if err != nil {
-		LogService.LogError("❌ DB query error fetching active membership details: ", err)
+		LogService.LogError(" DB query error fetching active membership details: ", err)
 		return nil, err
 	}
 	defer rows.Close()
@@ -87,7 +87,7 @@ func GetActiveMembershipDetailsForGym(gymId int) ([]models.ActiveMembershipUser,
 			&member.PlanDuration,
 			&member.PlanPrice,
 		); scanErr != nil {
-			LogService.LogError("❌ DB scan error fetching active membership details: ", scanErr)
+			LogService.LogError(" DB scan error fetching active membership details: ", scanErr)
 			return nil, scanErr
 		}
 
@@ -95,7 +95,7 @@ func GetActiveMembershipDetailsForGym(gymId int) ([]models.ActiveMembershipUser,
 	}
 
 	if rowsErr := rows.Err(); rowsErr != nil {
-		LogService.LogError("❌ DB rows iteration error fetching active membership details: ", rowsErr)
+		LogService.LogError(" DB rows iteration error fetching active membership details: ", rowsErr)
 		return nil, rowsErr
 	}
 
@@ -110,7 +110,7 @@ func GetAllGym() ([]gymModels.GymRecord, error) {
 
 	rows, err := db.DB.Query(query)
 	if err != nil {
-		LogService.LogError("❌ DB query error: ", err)
+		LogService.LogError(" DB query error: ", err)
 		return nil, err
 	}
 	defer rows.Close()
@@ -134,14 +134,14 @@ func GetAllGym() ([]gymModels.GymRecord, error) {
 			&gym.LocationLong,
 		)
 		if err != nil {
-			LogService.LogError("❌ DB scan error: ", err)
+			LogService.LogError(" DB scan error: ", err)
 			return nil, err
 		}
 		allGyms = append(allGyms, gym)
 	}
 
 	if err = rows.Err(); err != nil {
-		LogService.LogError("❌ DB rows error: ", err)
+		LogService.LogError(" DB rows error: ", err)
 		return nil, err
 	}
 
@@ -177,7 +177,7 @@ func SearchGymsByName(searchQuery string) ([]gymModels.GymRecordWithAdditionalDa
 
 	rows, err := db.DB.Query(query, searchQuery)
 	if err != nil {
-		LogService.LogError("❌ DB query error: ", err)
+		LogService.LogError(" DB query error: ", err)
 		return nil, err
 	}
 	defer rows.Close()
@@ -207,14 +207,14 @@ func SearchGymsByName(searchQuery string) ([]gymModels.GymRecordWithAdditionalDa
 			&gym.ActivePlans,
 		)
 		if err != nil {
-			LogService.LogError("❌ DB scan error: ", err)
+			LogService.LogError(" DB scan error: ", err)
 			return nil, err
 		}
 		gyms = append(gyms, gym)
 	}
 
 	if err = rows.Err(); err != nil {
-		LogService.LogError("❌ DB rows error: ", err)
+		LogService.LogError(" DB rows error: ", err)
 		return nil, err
 	}
 
@@ -246,7 +246,7 @@ func GetAllGymWithAdditionalData() ([]gymModels.GymRecordWithAdditionalData, err
 
 	rows, err := db.DB.Query(query)
 	if err != nil {
-		LogService.LogError("❌ DB query error: ", err)
+		LogService.LogError(" DB query error: ", err)
 		return nil, err
 	}
 	defer rows.Close()
@@ -276,14 +276,14 @@ func GetAllGymWithAdditionalData() ([]gymModels.GymRecordWithAdditionalData, err
 			&gym.ActivePlans,
 		)
 		if err != nil {
-			LogService.LogError("❌ DB scan error: ", err)
+			LogService.LogError(" DB scan error: ", err)
 			return nil, err
 		}
 		allGyms = append(allGyms, gym)
 	}
 
 	if err = rows.Err(); err != nil {
-		LogService.LogError("❌ DB rows error: ", err)
+		LogService.LogError(" DB rows error: ", err)
 		return nil, err
 	}
 
@@ -320,7 +320,7 @@ func GetGymById(gymId int) (*gymModels.GymRecord, error) {
 		if err == sql.ErrNoRows {
 			return nil, sql.ErrNoRows
 		}
-		LogService.LogError("❌ DB error: ", err)
+		LogService.LogError(" DB error: ", err)
 		return nil, err
 	}
 	return gym, nil
@@ -368,7 +368,7 @@ func GetGymWithAdditionalDataByGymId(gymId int) (*gymModels.GymRecordWithAdditio
 		if err == sql.ErrNoRows {
 			return nil, sql.ErrNoRows
 		}
-		LogService.LogError("❌ DB error: ", err)
+		LogService.LogError(" DB error: ", err)
 		return nil, err
 	}
 	return gym, nil
@@ -416,7 +416,7 @@ func GetGymWithAdditionalDataByOwnerId(userId int) (*gymModels.GymRecordWithAddi
 		if err == sql.ErrNoRows {
 			return nil, sql.ErrNoRows
 		}
-		LogService.LogError("❌ DB error: ", err)
+		LogService.LogError(" DB error: ", err)
 		return nil, err
 	}
 	return gym, nil
@@ -436,7 +436,7 @@ func GetGymOwnerAndManagers(gymId int) ([]int, error) {
 		where g.gymId = @p1`
 	rows, err := db.DB.Query(query, gymId)
 	if err != nil {
-		LogService.LogError("❌ DB query error: ", err)
+		LogService.LogError(" DB query error: ", err)
 		return nil, err
 	}
 	defer rows.Close()
@@ -449,14 +449,14 @@ func GetGymOwnerAndManagers(gymId int) ([]int, error) {
 			&currentUser,
 		)
 		if err != nil {
-			LogService.LogError("❌ DB scan error: ", err)
+			LogService.LogError(" DB scan error: ", err)
 			return nil, err
 		}
 		allUsers = append(allUsers, currentUser)
 	}
 
 	if err = rows.Err(); err != nil {
-		LogService.LogError("❌ DB rows error: ", err)
+		LogService.LogError(" DB rows error: ", err)
 		return nil, err
 	}
 
@@ -503,7 +503,7 @@ func GetGymMembersWithDetails(gymId int) ([]models.GymMemberWithDetails, error) 
 	`, gymId)
 
 	if err != nil {
-		LogService.LogError("❌ DB query error fetching gym members: ", err)
+		LogService.LogError(" DB query error fetching gym members: ", err)
 		return nil, err
 	}
 	defer rows.Close()
@@ -534,7 +534,7 @@ func GetGymMembersWithDetails(gymId int) ([]models.GymMemberWithDetails, error) 
 		)
 
 		if err != nil {
-			LogService.LogError("❌ DB scan error fetching gym members: ", err)
+			LogService.LogError(" DB scan error fetching gym members: ", err)
 			return nil, err
 		}
 
@@ -542,7 +542,7 @@ func GetGymMembersWithDetails(gymId int) ([]models.GymMemberWithDetails, error) 
 	}
 
 	if err := rows.Err(); err != nil {
-		LogService.LogError("❌ DB rows iteration error fetching gym members: ", err)
+		LogService.LogError(" DB rows iteration error fetching gym members: ", err)
 		return nil, err
 	}
 
@@ -567,13 +567,13 @@ func UpdateGym(req gymModels.UpdateGymRequest) error {
 	`, req.GymName, req.State, req.City, req.GymAddress, req.ContactNo, req.OfficialEmail, req.LocationLat, req.LocationLong, req.GymId)
 
 	if err != nil {
-		LogService.LogError("❌ DB error updating gym: ", err)
+		LogService.LogError(" DB error updating gym: ", err)
 		return err
 	}
 
 	rowsAffected, err := result.RowsAffected()
 	if err != nil {
-		LogService.LogError("❌ Error getting rows affected: ", err)
+		LogService.LogError(" Error getting rows affected: ", err)
 		return err
 	}
 
@@ -582,6 +582,6 @@ func UpdateGym(req gymModels.UpdateGymRequest) error {
 		return sql.ErrNoRows
 	}
 
-	LogService.LogMessage("✅ Gym updated successfully")
+	LogService.LogMessage(" Gym updated successfully")
 	return nil
 }

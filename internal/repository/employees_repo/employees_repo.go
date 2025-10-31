@@ -28,7 +28,7 @@ func InsertEmployees(employeeModel models.EmployeeModel) (*int, error) {
         VALUES (@p1, @p2, @p3)`,
 		employeeModel.UserId, employeeModel.GymId, employeeModel.CreatedBy).Scan(&id)
 	if err != nil {
-		LogService.LogError("❌ DB error inserting plan: ", err)
+		LogService.LogError(" DB error inserting plan: ", err)
 		return nil, err
 	}
 	return &id, nil
@@ -45,7 +45,7 @@ func GetEmployeeByUserId(userId int) (*models.EmployeeModel, error) {
 		if err == sql.ErrNoRows {
 			return nil, sql.ErrNoRows
 		}
-		LogService.LogError("❌ DB error: ", err)
+		LogService.LogError(" DB error: ", err)
 		return nil, err
 	}
 	return employeeModel, nil
@@ -58,7 +58,7 @@ func GetAllEmployees(gymId int) ([]models.EmployeeModel, error) {
 		where gymId = @p1
 	`, gymId)
 	if err != nil {
-		LogService.LogError("❌ DB query error: ", err)
+		LogService.LogError(" DB query error: ", err)
 		return nil, err
 	}
 	defer rows.Close()
@@ -75,14 +75,14 @@ func GetAllEmployees(gymId int) ([]models.EmployeeModel, error) {
 			&currentEmp.StartedWorking,
 		)
 		if err != nil {
-			LogService.LogError("❌ DB scan error: ", err)
+			LogService.LogError(" DB scan error: ", err)
 			return nil, err
 		}
 		employees = append(employees, currentEmp)
 	}
 
 	if err = rows.Err(); err != nil {
-		LogService.LogError("❌ DB rows error: ", err)
+		LogService.LogError(" DB rows error: ", err)
 		return nil, err
 	}
 
@@ -104,7 +104,7 @@ func GetEmployeeByEmployeeId(empId int) (*models.EmployeeModel, error) {
 		if err == sql.ErrNoRows {
 			return nil, sql.ErrNoRows
 		}
-		LogService.LogError("❌ DB error: ", err)
+		LogService.LogError(" DB error: ", err)
 		return nil, err
 	}
 	return employeeModel, nil
@@ -176,7 +176,7 @@ func GetAllEmployeesWithUserDetails(gymId int, excludeUserId *int) ([]models.Emp
 		`, gymId)
 	}
 	if err != nil {
-		LogService.LogError("❌ DB query error: ", err)
+		LogService.LogError(" DB query error: ", err)
 		return nil, err
 	}
 	defer rows.Close()
@@ -201,14 +201,14 @@ func GetAllEmployeesWithUserDetails(gymId int, excludeUserId *int) ([]models.Emp
 			&emp.IsActive,
 		)
 		if err != nil {
-			LogService.LogError("❌ DB scan error: ", err)
+			LogService.LogError(" DB scan error: ", err)
 			return nil, err
 		}
 		employees = append(employees, emp)
 	}
 
 	if err = rows.Err(); err != nil {
-		LogService.LogError("❌ DB rows error: ", err)
+		LogService.LogError(" DB rows error: ", err)
 		return nil, err
 	}
 
@@ -266,7 +266,7 @@ func GetEmployeeWithUserDetailsByEmployeeId(empId int) (*models.EmployeeWithUser
 		if err == sql.ErrNoRows {
 			return nil, sql.ErrNoRows
 		}
-		LogService.LogError("❌ DB error: ", err)
+		LogService.LogError(" DB error: ", err)
 		return nil, err
 	}
 	return emp, nil

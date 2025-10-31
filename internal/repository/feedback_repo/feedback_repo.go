@@ -16,7 +16,7 @@ func InsertFeedback(f models.FeedbackRecord) (*int, error) {
 		f.Rating, f.Comments, f.GymId, f.CreatedBy,
 	).Scan(&id)
 	if err != nil {
-		LogService.LogError("❌ DB error inserting feedback: ", err)
+		LogService.LogError(" DB error inserting feedback: ", err)
 		return nil, err
 	}
 	return &id, nil
@@ -43,7 +43,7 @@ func GetFeedbackById(feedbackId int) (*models.FeedbackRecord, error) {
 		if err == sql.ErrNoRows {
 			return nil, sql.ErrNoRows
 		}
-		LogService.LogError("❌ DB error: ", err)
+		LogService.LogError(" DB error: ", err)
 		return nil, err
 	}
 	return feedback, nil
@@ -60,7 +60,7 @@ func GetAllFeedbacksByGymId(gymId int) ([]models.FeedbackRecord, error) {
 
 	rows, err := db.DB.Query(query, gymId)
 	if err != nil {
-		LogService.LogError("❌ DB query error: ", err)
+		LogService.LogError(" DB query error: ", err)
 		return nil, err
 	}
 	defer rows.Close()
@@ -80,14 +80,14 @@ func GetAllFeedbacksByGymId(gymId int) ([]models.FeedbackRecord, error) {
 			&feedback.CreatedAt,
 		)
 		if err != nil {
-			LogService.LogError("❌ DB scan error: ", err)
+			LogService.LogError(" DB scan error: ", err)
 			return nil, err
 		}
 		feedbacks = append(feedbacks, feedback)
 	}
 
 	if err = rows.Err(); err != nil {
-		LogService.LogError("❌ DB rows error: ", err)
+		LogService.LogError(" DB rows error: ", err)
 		return nil, err
 	}
 
@@ -108,7 +108,7 @@ func UpdateFeedback(feedback models.FeedbackRecord) error {
 		feedback.Comments,
 		feedback.FeedbackId)
 	if err != nil {
-		LogService.LogError("❌ DB error updating feedback: ", err)
+		LogService.LogError(" DB error updating feedback: ", err)
 		return err
 	}
 	return nil
@@ -120,13 +120,13 @@ func DeleteFeedback(feedbackId int) error {
 		WHERE feedbackId = @p1`,
 		feedbackId)
 	if err != nil {
-		LogService.LogError("❌ DB error deleting feedback: ", err)
+		LogService.LogError(" DB error deleting feedback: ", err)
 		return err
 	}
 
 	rowsAffected, err := result.RowsAffected()
 	if err != nil {
-		LogService.LogError("❌ DB error getting rows affected: ", err)
+		LogService.LogError(" DB error getting rows affected: ", err)
 		return err
 	}
 
@@ -149,9 +149,8 @@ func GetFeedbackCountByGymId(gymId int) (*int, error) {
 		if err == sql.ErrNoRows {
 			return nil, sql.ErrNoRows
 		}
-		LogService.LogError("❌ DB error: ", err)
+		LogService.LogError(" DB error: ", err)
 		return nil, err
 	}
 	return &feedbackCount, nil
 }
-

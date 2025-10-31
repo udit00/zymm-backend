@@ -14,9 +14,6 @@ type ctxKey string
 
 const ctxClaimDataKey ctxKey = "ctxClaimsKey"
 
-// AuthMiddleware validates Authorization: Bearer <token>, extracts userId from JWT
-// and attaches it to request context under ctxUserIDKey. It uses the project's
-// business auth helpers for parsing/validation so it follows existing claim names.
 func AuthMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		authHeader := r.Header.Get("Authorization")

@@ -29,7 +29,7 @@ func InitDB() {
 	name := os.Getenv("DB_NAME")
 
 	if user == "" || pass == "" || host == "" || port == "" || name == "" {
-		log.Fatal("❌ Database environment variables not set")
+		log.Fatal(" Database environment variables not set")
 	}
 
 	connString := fmt.Sprintf("sqlserver://%s:%s@%s:%s?database=%s&encrypt=true&trustservercertificate=true",
@@ -38,12 +38,12 @@ func InitDB() {
 	var err error
 	DB, err = sql.Open("sqlserver", connString)
 	if err != nil {
-		log.Fatalf("❌ Error opening DB: %v", err)
+		log.Fatalf(" Error opening DB: %v", err)
 	}
 
 	if err = DB.Ping(); err != nil {
-		log.Fatalf("❌ Could not connect to DB: %v", err)
+		log.Fatalf(" Could not connect to DB: %v", err)
 	}
 
-	log.Println("✅ Connected to MSSQL database")
+	log.Println(" Connected to MSSQL database")
 }

@@ -18,17 +18,17 @@ func InsertNotification(userId int, notificationType businessNotificationType.No
 	// Ensure title and description fit DB constraints (VARCHAR(100))
 	const maxTitleLength = 100
 	const maxDescLength = 100
-	
+
 	if len(title) > maxTitleLength {
 		title = title[:maxTitleLength]
 		LogService.LogMessage(fmt.Sprintf("⚠️ Notification title truncated to %d chars", maxTitleLength))
 	}
-	
+
 	if len(description) > maxDescLength {
 		description = description[:maxDescLength-3] + "..."
 		LogService.LogMessage(fmt.Sprintf("⚠️ Notification description truncated to %d chars", maxDescLength))
 	}
-	
+
 	_, err := db.DB.Exec(`
 		INSERT INTO notifications (userId, notificationType, notificationTitle, notificationDesc, createdBy)
 		VALUES (@p1, @p2, @p3, @p4, @p5)`,
@@ -40,7 +40,7 @@ func InsertNotification(userId int, notificationType businessNotificationType.No
 	)
 
 	if err != nil {
-		LogService.LogError("❌ DB error inserting notification: ", err)
+		LogService.LogError(" DB error inserting notification: ", err)
 		return err
 	}
 
@@ -53,13 +53,13 @@ func MarkNotificationAsRead(notificationId int, userId int) error {
 		SET isRead = 1
 		WHERE notificationId = @p1 AND userId = @p2`, notificationId, userId)
 	if err != nil {
-		LogService.LogError("❌ DB error updating notification read status: ", err)
+		LogService.LogError(" DB error updating notification read status: ", err)
 		return err
 	}
 
 	rowsAffected, err := result.RowsAffected()
 	if err != nil {
-		LogService.LogError("❌ DB rows affected error updating notification read status: ", err)
+		LogService.LogError(" DB rows affected error updating notification read status: ", err)
 		return err
 	}
 
@@ -84,7 +84,7 @@ func GetNotificationsByUserId(userId int) ([]models.NotificationRecord, error) {
 		WHERE userId = @p1
 		ORDER BY createdOn DESC`, userId)
 	if err != nil {
-		LogService.LogError("❌ DB query error fetching notifications: ", err)
+		LogService.LogError(" DB query error fetching notifications: ", err)
 		return nil, err
 	}
 	defer rows.Close()
@@ -103,7 +103,7 @@ func GetNotificationsByUserId(userId int) ([]models.NotificationRecord, error) {
 			&notif.CreatedOn,
 			&isRead,
 		); scanErr != nil {
-			LogService.LogError("❌ DB scan error fetching notifications: ", scanErr)
+			LogService.LogError(" DB scan error fetching notifications: ", scanErr)
 			return nil, scanErr
 		}
 		notif.IsRead = isRead.Valid && isRead.Bool
@@ -111,7 +111,7 @@ func GetNotificationsByUserId(userId int) ([]models.NotificationRecord, error) {
 	}
 
 	if rowsErr := rows.Err(); rowsErr != nil {
-		LogService.LogError("❌ DB rows iteration error fetching notifications: ", rowsErr)
+		LogService.LogError(" DB rows iteration error fetching notifications: ", rowsErr)
 		return nil, rowsErr
 	}
 
@@ -127,7 +127,7 @@ func GetUnreadNotificationCount(userId int) (int, error) {
 	`, userId).Scan(&count)
 
 	if err != nil {
-		LogService.LogError("❌ DB error getting unread notification count: ", err)
+		LogService.LogError(" DB error getting unread notification count: ", err)
 		return 0, err
 	}
 

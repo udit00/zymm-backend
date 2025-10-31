@@ -59,7 +59,7 @@ func getSelfData(w http.ResponseWriter, r *http.Request) {
 
 	userData, err := userRepo.GetUserDetailsForSelfByUserId(currentUserId)
 	if err != nil {
-		LogService.LogError("❌ Error fetching user data: ", err)
+		LogService.LogError(" Error fetching user data: ", err)
 		utils.SendErrorResponse(w, http.StatusInternalServerError, "Error fetching user data: "+err.Error())
 		return
 	}
@@ -72,7 +72,7 @@ func getSelfData(w http.ResponseWriter, r *http.Request) {
 	userActiveMembership, err := membershipRepo.GetUserMembershipByUserId(currentUserId)
 	if err != nil {
 		if err != sql.ErrNoRows {
-			LogService.LogError("❌ Error fetching user active membership data: ", err)
+			LogService.LogError(" Error fetching user active membership data: ", err)
 			utils.SendErrorResponse(w, http.StatusInternalServerError, "Error fetching user active membership data: "+err.Error())
 			return
 		}
@@ -82,7 +82,7 @@ func getSelfData(w http.ResponseWriter, r *http.Request) {
 		planDetails, planErr = membershipRepo.GetPlanById(userActiveMembership.PlanId)
 		if planErr != nil {
 			if planErr != sql.ErrNoRows {
-				LogService.LogError("❌ Error fetching plan details: ", planErr)
+				LogService.LogError(" Error fetching plan details: ", planErr)
 				utils.SendErrorResponse(w, http.StatusInternalServerError, "Error fetching plan details: "+planErr.Error())
 				return
 			}
@@ -92,7 +92,7 @@ func getSelfData(w http.ResponseWriter, r *http.Request) {
 	// Get unread notification count
 	unreadCount, unreadErr := notificationRepo.GetUnreadNotificationCount(currentUserId)
 	if unreadErr != nil {
-		LogService.LogError("❌ Error fetching unread notification count: ", unreadErr)
+		LogService.LogError(" Error fetching unread notification count: ", unreadErr)
 		// Don't fail the request, just set count to 0
 		unreadCount = 0
 	}
@@ -346,7 +346,7 @@ func uploadProfilePicture(w http.ResponseWriter, r *http.Request) {
 	// Create images directory if it doesn't exist
 	imagesDir := "./images/profile_pictures"
 	if err := os.MkdirAll(imagesDir, os.ModePerm); err != nil {
-		LogService.LogError("❌ Error creating images directory: ", err)
+		LogService.LogError(" Error creating images directory: ", err)
 		utils.SendErrorResponse(w, http.StatusInternalServerError, "Error creating upload directory")
 		return
 	}
@@ -375,7 +375,7 @@ func uploadProfilePicture(w http.ResponseWriter, r *http.Request) {
 	// Create the file
 	dst, err := os.Create(filepath)
 	if err != nil {
-		LogService.LogError("❌ Error creating file: ", err)
+		LogService.LogError(" Error creating file: ", err)
 		utils.SendErrorResponse(w, http.StatusInternalServerError, "Error saving file")
 		return
 	}
@@ -384,12 +384,12 @@ func uploadProfilePicture(w http.ResponseWriter, r *http.Request) {
 	// Copy the uploaded file to the destination file
 	bytesWritten, err := io.Copy(dst, file)
 	if err != nil {
-		LogService.LogError("❌ Error copying file: ", err)
+		LogService.LogError(" Error copying file: ", err)
 		utils.SendErrorResponse(w, http.StatusInternalServerError, "Error saving file")
 		return
 	}
 
-	LogService.LogMessage(fmt.Sprintf("✅ Image saved: %s (%.2f MB, %d bytes)", filename, float64(bytesWritten)/1024/1024, bytesWritten))
+	LogService.LogMessage(fmt.Sprintf(" Image saved: %s (%.2f MB, %d bytes)", filename, float64(bytesWritten)/1024/1024, bytesWritten))
 
 	// Generate the URL for the image
 	// Get the host from the request

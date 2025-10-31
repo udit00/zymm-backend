@@ -20,7 +20,7 @@ func GetUserDataByEmailOrMobile(emailOrMobile string) (*models.LoginUserDataMode
 		if err == sql.ErrNoRows {
 			return nil, sql.ErrNoRows
 		}
-		LogService.LogError("❌ DB error: ", err)
+		LogService.LogError(" DB error: ", err)
 		return nil, err
 	}
 	return &userData, nil
@@ -39,7 +39,7 @@ func GetUserDetailsForSelfByUserId(userId int) (*models.UserRecord, error) {
 		if err == sql.ErrNoRows {
 			return nil, sql.ErrNoRows
 		}
-		LogService.LogError("❌ DB error: ", err)
+		LogService.LogError(" DB error: ", err)
 		return nil, err
 	}
 	return user, nil
@@ -59,7 +59,7 @@ func GetUserByUserId(userId int) (*models.UserRecord, error) {
 		if err == sql.ErrNoRows {
 			return nil, sql.ErrNoRows
 		}
-		LogService.LogError("❌ DB error: ", err)
+		LogService.LogError(" DB error: ", err)
 		return nil, err
 	}
 	return user, nil
@@ -78,7 +78,7 @@ func CheckUserExistsByMobile(mobile string) (bool, error) {
 		mobile).Scan(&exists)
 
 	if err != nil {
-		LogService.LogError("❌ DB error: ", err)
+		LogService.LogError(" DB error: ", err)
 		return false, err
 	}
 
@@ -98,7 +98,7 @@ func CheckUserExistsByEmail(email string) (bool, error) {
 		email).Scan(&exists)
 
 	if err != nil {
-		LogService.LogError("❌ DB error: ", err)
+		LogService.LogError(" DB error: ", err)
 		return false, err
 	}
 
@@ -113,7 +113,7 @@ func UpdateUserProfilePicture(userId int, profilePicUrl string) error {
 	`, profilePicUrl, userId)
 
 	if err != nil {
-		LogService.LogError("❌ DB error updating profile picture: ", err)
+		LogService.LogError(" DB error updating profile picture: ", err)
 		return err
 	}
 
@@ -129,13 +129,13 @@ func DeactivateUser(userId int) error {
 	`, userId)
 
 	if err != nil {
-		LogService.LogError("❌ DB error deactivating user: ", err)
+		LogService.LogError(" DB error deactivating user: ", err)
 		return err
 	}
 
 	rowsAffected, err := result.RowsAffected()
 	if err != nil {
-		LogService.LogError("❌ DB error getting rows affected: ", err)
+		LogService.LogError(" DB error getting rows affected: ", err)
 		return err
 	}
 
@@ -155,13 +155,13 @@ func ActivateUser(userId int) error {
 	`, userId)
 
 	if err != nil {
-		LogService.LogError("❌ DB error activating user: ", err)
+		LogService.LogError(" DB error activating user: ", err)
 		return err
 	}
 
 	rowsAffected, err := result.RowsAffected()
 	if err != nil {
-		LogService.LogError("❌ DB error getting rows affected: ", err)
+		LogService.LogError(" DB error getting rows affected: ", err)
 		return err
 	}
 

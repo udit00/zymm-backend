@@ -26,7 +26,7 @@ func InsertPlan(p models.PlanRecord) (*int, error) {
 		p.PlanBanner, p.PlanName, p.PlanDesc, p.PlanPrice, p.PlanDuration, p.IsActive, p.CreatedBy, p.GymId,
 	).Scan(&id)
 	if err != nil {
-		LogService.LogError("❌ DB error inserting plan: ", err)
+		LogService.LogError(" DB error inserting plan: ", err)
 		return nil, err
 	}
 	return &id, nil
@@ -52,7 +52,7 @@ func UpdatePlan(newPlanDetails models.PlanRecord) error {
 		newPlanDetails.GymId,
 		newPlanDetails.PlanId)
 	if err != nil {
-		LogService.LogError("❌ DB error: ", err)
+		LogService.LogError(" DB error: ", err)
 		return err
 	}
 	return nil
@@ -67,7 +67,7 @@ func InsertPlanChangeLog(log models.PlanChangeLog) (*int, error) {
 		log.PlanId, log.ChangedBy, log.ChangeType, log.ChangeDetails, log.OldPlanBanner, log.OldPlanName, log.OldPlanDesc, log.OldPlanPrice, log.OldPlanDuration, log.OldIsActive, log.NewPlanBanner, log.NewPlanName, log.NewPlanDesc, log.NewPlanPrice, log.NewPlanDuration, log.NewIsActive,
 	).Scan(&id)
 	if err != nil {
-		LogService.LogError("❌ DB error inserting plan change log: ", err)
+		LogService.LogError(" DB error inserting plan change log: ", err)
 		return nil, err
 	}
 	return &id, nil
@@ -85,7 +85,7 @@ func GetPlanById(planId int) (*models.PlanRecord, error) {
 		if err == sql.ErrNoRows {
 			return nil, sql.ErrNoRows
 		}
-		LogService.LogError("❌ DB error: ", err)
+		LogService.LogError(" DB error: ", err)
 		return nil, err
 	}
 	return plan, nil
@@ -100,7 +100,7 @@ func GetPlansByGymId(gymId int) ([]models.PlanRecord, error) {
 		gymId)
 
 	if err != nil {
-		LogService.LogError("❌ DB error during query execution: ", err)
+		LogService.LogError(" DB error during query execution: ", err)
 		return nil, err
 	}
 	defer rows.Close()
@@ -114,7 +114,7 @@ func GetPlansByGymId(gymId int) ([]models.PlanRecord, error) {
 			&plan.PlanId, &plan.PlanBanner, &plan.PlanName, &plan.PlanDesc, &plan.PlanPrice, &plan.PlanDuration, &plan.IsActive, &plan.CreatedBy, &plan.CreatedAt, &plan.GymId)
 
 		if err != nil {
-			LogService.LogError("❌ DB error during row scan: ", err)
+			LogService.LogError(" DB error during row scan: ", err)
 			return nil, err
 		}
 
@@ -122,7 +122,7 @@ func GetPlansByGymId(gymId int) ([]models.PlanRecord, error) {
 	}
 
 	if err := rows.Err(); err != nil {
-		LogService.LogError("❌ DB error after rows iteration: ", err)
+		LogService.LogError(" DB error after rows iteration: ", err)
 		return nil, err
 	}
 
@@ -144,7 +144,7 @@ func GetUserMembershipByUserId(userId int) (*models.UserMembership, error) {
 		if err == sql.ErrNoRows {
 			return nil, sql.ErrNoRows
 		}
-		LogService.LogError("❌ DB error: ", err)
+		LogService.LogError(" DB error: ", err)
 		return nil, err
 	}
 	return membership, nil
@@ -162,7 +162,7 @@ func GetUserMembershipByMembershipId(membershipId int) (*models.UserMembership, 
 		if err == sql.ErrNoRows {
 			return nil, sql.ErrNoRows
 		}
-		LogService.LogError("❌ DB error: ", err)
+		LogService.LogError(" DB error: ", err)
 		return nil, err
 	}
 	return membership, nil
@@ -202,7 +202,7 @@ func GetAllMembershipPlansRequestByUserId(userId int, filterBy MembershipStatus)
 	}
 	rows, err := db.DB.Query(query, userId)
 	if err != nil {
-		LogService.LogError("❌ DB query error: ", err)
+		LogService.LogError(" DB query error: ", err)
 		return nil, err
 	}
 	defer rows.Close()
@@ -222,14 +222,14 @@ func GetAllMembershipPlansRequestByUserId(userId int, filterBy MembershipStatus)
 			&membership.CreatedAt,
 		)
 		if err != nil {
-			LogService.LogError("❌ DB scan error: ", err)
+			LogService.LogError(" DB scan error: ", err)
 			return nil, err
 		}
 		memberships = append(memberships, membership)
 	}
 
 	if err = rows.Err(); err != nil {
-		LogService.LogError("❌ DB rows error: ", err)
+		LogService.LogError(" DB rows error: ", err)
 		return nil, err
 	}
 
@@ -250,7 +250,7 @@ func InsertMembershipRequest(um models.UserMembership) (*int, error) {
 		um.UserId, um.PlanId, um.StartDate, um.EndDate, um.MembershipStatus,
 	).Scan(&id)
 	if err != nil {
-		LogService.LogError("❌ DB error inserting userMembership: ", err)
+		LogService.LogError(" DB error inserting userMembership: ", err)
 		return nil, err
 	}
 	return &id, nil
@@ -263,7 +263,7 @@ func CancelMembershipRequest(membershipId int) error {
 		membershipId,
 	)
 	if err != nil {
-		LogService.LogError("❌ DB error: ", err)
+		LogService.LogError(" DB error: ", err)
 		return err
 	}
 	return nil
@@ -283,7 +283,7 @@ func TakeActionOnMembershipRequest(memberId int, membershipId int, actionTaken b
 		memberId, membershipId, actionTakenString, userId,
 	).Scan(&id)
 	if err != nil {
-		LogService.LogError("❌ DB error inserting userMembershipsChangesLogs: ", err)
+		LogService.LogError(" DB error inserting userMembershipsChangesLogs: ", err)
 		return nil, err
 	}
 	return &id, nil
@@ -301,7 +301,7 @@ func UpdateActionTakenOnUserMembership(membershipId int, actionTaken bussinessMe
 		membershipId,
 	)
 	if err != nil {
-		LogService.LogError("❌ DB error: ", err)
+		LogService.LogError(" DB error: ", err)
 		return err
 	}
 	return nil
@@ -321,7 +321,7 @@ func GetPlanCountByGymId(gymId int) (*int, error) {
 		if err == sql.ErrNoRows {
 			return nil, sql.ErrNoRows
 		}
-		LogService.LogError("❌ DB error: ", err)
+		LogService.LogError(" DB error: ", err)
 		return nil, err
 	}
 	return &count, nil
@@ -365,7 +365,7 @@ func GetAllMembershipPlansRequest(gymId int, filterBy MembershipStatus) ([]model
 	}
 	rows, err := db.DB.Query(query, gymId)
 	if err != nil {
-		LogService.LogError("❌ DB query error: ", err)
+		LogService.LogError(" DB query error: ", err)
 		return nil, err
 	}
 	defer rows.Close()
@@ -385,14 +385,14 @@ func GetAllMembershipPlansRequest(gymId int, filterBy MembershipStatus) ([]model
 			&membership.CreatedAt,
 		)
 		if err != nil {
-			LogService.LogError("❌ DB scan error: ", err)
+			LogService.LogError(" DB scan error: ", err)
 			return nil, err
 		}
 		memberships = append(memberships, membership)
 	}
 
 	if err = rows.Err(); err != nil {
-		LogService.LogError("❌ DB rows error: ", err)
+		LogService.LogError(" DB rows error: ", err)
 		return nil, err
 	}
 
@@ -412,13 +412,13 @@ func DeactivatePlan(planId int) error {
 	`, planId)
 
 	if err != nil {
-		LogService.LogError("❌ DB error deactivating plan: ", err)
+		LogService.LogError(" DB error deactivating plan: ", err)
 		return err
 	}
 
 	rowsAffected, err := result.RowsAffected()
 	if err != nil {
-		LogService.LogError("❌ DB error getting rows affected: ", err)
+		LogService.LogError(" DB error getting rows affected: ", err)
 		return err
 	}
 
@@ -438,13 +438,13 @@ func ActivatePlan(planId int) error {
 	`, planId)
 
 	if err != nil {
-		LogService.LogError("❌ DB error activating plan: ", err)
+		LogService.LogError(" DB error activating plan: ", err)
 		return err
 	}
 
 	rowsAffected, err := result.RowsAffected()
 	if err != nil {
-		LogService.LogError("❌ DB error getting rows affected: ", err)
+		LogService.LogError(" DB error getting rows affected: ", err)
 		return err
 	}
 
@@ -488,7 +488,7 @@ func GetMembersWithPendingFees(gymId int) ([]models.MemberWithPendingFees, error
 	`, gymId)
 
 	if err != nil {
-		LogService.LogError("❌ DB error during query execution: ", err)
+		LogService.LogError(" DB error during query execution: ", err)
 		return nil, err
 	}
 	defer rows.Close()
@@ -515,7 +515,7 @@ func GetMembersWithPendingFees(gymId int) ([]models.MemberWithPendingFees, error
 		)
 
 		if err != nil {
-			LogService.LogError("❌ DB error during row scan: ", err)
+			LogService.LogError(" DB error during row scan: ", err)
 			return nil, err
 		}
 
@@ -523,7 +523,7 @@ func GetMembersWithPendingFees(gymId int) ([]models.MemberWithPendingFees, error
 	}
 
 	if err := rows.Err(); err != nil {
-		LogService.LogError("❌ DB error after rows iteration: ", err)
+		LogService.LogError(" DB error after rows iteration: ", err)
 		return nil, err
 	}
 

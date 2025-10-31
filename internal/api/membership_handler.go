@@ -251,15 +251,15 @@ func requestMembershipByUserToGym(w http.ResponseWriter, r *http.Request) {
 
 		// Check if current time is between start and end
 		if latestUserMembershipDetails.MembershipStatus == "A" && isBetween {
-			fmt.Println("✅ Current time is between start and end")
+			fmt.Println(" Current time is between start and end")
 			utils.SendErrorResponse(w, http.StatusBadRequest, "You already have an active plan.")
 			return
 		} else if latestUserMembershipDetails.MembershipStatus == "P" {
-			fmt.Println("✅ Current time is between start and end")
+			fmt.Println(" Current time is between start and end")
 			utils.SendErrorResponse(w, http.StatusBadRequest, "You already have an pending plan request, please wait for the gym staff to make some changes on it.")
 			return
 		} else {
-			fmt.Println("❌ Current time is outside the range")
+			fmt.Println(" Current time is outside the range")
 			insertMembership(w, createdBy, planDetails.PlanId, *planDetails.GymId, planDetails.PlanDuration)
 
 		}
@@ -1078,7 +1078,7 @@ func sendFeeReminders(w http.ResponseWriter, r *http.Request) {
 		// Get user's membership details for notification message
 		membership, membershipErr := membershipRepo.GetUserMembershipByUserId(userId)
 		if membershipErr != nil {
-			LogService.LogError(fmt.Sprintf("❌ Failed to get membership for user %d: %v", userId), membershipErr)
+			LogService.LogError(fmt.Sprintf(" Failed to get membership for user %d: %v", userId), membershipErr)
 			notificationsFailed++
 			continue
 		}
@@ -1086,7 +1086,7 @@ func sendFeeReminders(w http.ResponseWriter, r *http.Request) {
 		// Get plan details
 		planDetails, planErr := membershipRepo.GetPlanById(membership.PlanId)
 		if planErr != nil {
-			LogService.LogError(fmt.Sprintf("❌ Failed to get plan for user %d: %v", userId), planErr)
+			LogService.LogError(fmt.Sprintf(" Failed to get plan for user %d: %v", userId), planErr)
 			notificationsFailed++
 			continue
 		}

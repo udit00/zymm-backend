@@ -15,10 +15,6 @@ import (
 
 func main() {
 
-	// key := make([]byte, 64)
-	// _, _ = rand.Read(key)
-	// LogService.LogMessage("my key: " + base64.StdEncoding.EncodeToString(key))
-
 	config.Init()
 
 	mux := http.NewServeMux()

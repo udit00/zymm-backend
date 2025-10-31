@@ -18,7 +18,7 @@ func CreateMessage(req models.CreateMessageRequest, createdBy int) (*models.Mess
 	`, req.MessageForUserId, req.Comment, createdBy).Scan(&messageId)
 
 	if err != nil {
-		LogService.LogError("❌ DB error creating message: ", err)
+		LogService.LogError(" DB error creating message: ", err)
 		return nil, err
 	}
 
@@ -28,7 +28,7 @@ func CreateMessage(req models.CreateMessageRequest, createdBy int) (*models.Mess
 		return nil, fetchErr
 	}
 
-	LogService.LogMessage("✅ Message created successfully")
+	LogService.LogMessage(" Message created successfully")
 	return message, nil
 }
 
@@ -53,7 +53,7 @@ func GetMessageById(messageId int) (*models.Message, error) {
 		if err == sql.ErrNoRows {
 			return nil, sql.ErrNoRows
 		}
-		LogService.LogError("❌ DB error fetching message: ", err)
+		LogService.LogError(" DB error fetching message: ", err)
 		return nil, err
 	}
 
@@ -69,13 +69,13 @@ func UpdateMessage(req models.UpdateMessageRequest, currentUserId int) error {
 	`, req.Comment, req.MessageId, currentUserId)
 
 	if err != nil {
-		LogService.LogError("❌ DB error updating message: ", err)
+		LogService.LogError(" DB error updating message: ", err)
 		return err
 	}
 
 	rowsAffected, err := result.RowsAffected()
 	if err != nil {
-		LogService.LogError("❌ Error getting rows affected: ", err)
+		LogService.LogError(" Error getting rows affected: ", err)
 		return err
 	}
 
@@ -84,7 +84,7 @@ func UpdateMessage(req models.UpdateMessageRequest, currentUserId int) error {
 		return sql.ErrNoRows
 	}
 
-	LogService.LogMessage("✅ Message updated successfully")
+	LogService.LogMessage(" Message updated successfully")
 	return nil
 }
 
@@ -97,13 +97,13 @@ func SoftDeleteMessage(messageId int, currentUserId int) error {
 	`, messageId, currentUserId)
 
 	if err != nil {
-		LogService.LogError("❌ DB error deleting message: ", err)
+		LogService.LogError(" DB error deleting message: ", err)
 		return err
 	}
 
 	rowsAffected, err := result.RowsAffected()
 	if err != nil {
-		LogService.LogError("❌ Error getting rows affected: ", err)
+		LogService.LogError(" Error getting rows affected: ", err)
 		return err
 	}
 
@@ -112,7 +112,7 @@ func SoftDeleteMessage(messageId int, currentUserId int) error {
 		return sql.ErrNoRows
 	}
 
-	LogService.LogMessage("✅ Message deleted successfully")
+	LogService.LogMessage(" Message deleted successfully")
 	return nil
 }
 
@@ -140,11 +140,11 @@ func MarkMessagesAsRead(messageIds []int, currentUserId int) error {
 
 	_, err := db.DB.Exec(query, params...)
 	if err != nil {
-		LogService.LogError("❌ DB error marking messages as read: ", err)
+		LogService.LogError(" DB error marking messages as read: ", err)
 		return err
 	}
 
-	LogService.LogMessage("✅ Messages marked as read")
+	LogService.LogMessage(" Messages marked as read")
 	return nil
 }
 
@@ -208,7 +208,7 @@ func GetChatParticipants(currentUserId int) ([]models.ChatParticipant, error) {
 	`, currentUserId)
 
 	if err != nil {
-		LogService.LogError("❌ DB error fetching chat participants: ", err)
+		LogService.LogError(" DB error fetching chat participants: ", err)
 		return nil, err
 	}
 	defer rows.Close()
@@ -229,7 +229,7 @@ func GetChatParticipants(currentUserId int) ([]models.ChatParticipant, error) {
 		)
 
 		if err != nil {
-			LogService.LogError("❌ DB scan error fetching chat participants: ", err)
+			LogService.LogError(" DB scan error fetching chat participants: ", err)
 			return nil, err
 		}
 
@@ -237,7 +237,7 @@ func GetChatParticipants(currentUserId int) ([]models.ChatParticipant, error) {
 	}
 
 	if err := rows.Err(); err != nil {
-		LogService.LogError("❌ DB rows iteration error fetching chat participants: ", err)
+		LogService.LogError(" DB rows iteration error fetching chat participants: ", err)
 		return nil, err
 	}
 
@@ -282,7 +282,7 @@ func GetChatMessages(currentUserId int, otherUserId int) ([]models.ChatMessage, 
 	`, currentUserId, otherUserId)
 
 	if err != nil {
-		LogService.LogError("❌ DB error fetching chat messages: ", err)
+		LogService.LogError(" DB error fetching chat messages: ", err)
 		return nil, err
 	}
 	defer rows.Close()
@@ -304,7 +304,7 @@ func GetChatMessages(currentUserId int, otherUserId int) ([]models.ChatMessage, 
 		)
 
 		if err != nil {
-			LogService.LogError("❌ DB scan error fetching chat messages: ", err)
+			LogService.LogError(" DB scan error fetching chat messages: ", err)
 			return nil, err
 		}
 
@@ -315,7 +315,7 @@ func GetChatMessages(currentUserId int, otherUserId int) ([]models.ChatMessage, 
 	}
 
 	if err := rows.Err(); err != nil {
-		LogService.LogError("❌ DB rows iteration error fetching chat messages: ", err)
+		LogService.LogError(" DB rows iteration error fetching chat messages: ", err)
 		return nil, err
 	}
 
@@ -332,7 +332,7 @@ func GetUnreadMessageCount(userId int) (int, error) {
 	`, userId).Scan(&count)
 
 	if err != nil {
-		LogService.LogError("❌ DB error fetching unread count: ", err)
+		LogService.LogError(" DB error fetching unread count: ", err)
 		return 0, err
 	}
 
@@ -361,7 +361,7 @@ func GetAvailableChatUsers(currentUserId int, roleId int) ([]models.AvailableCha
 	`, currentUserId).Scan(&userRoleId, &gymId)
 
 	if err != nil {
-		LogService.LogError("❌ DB error fetching user's gym: ", err)
+		LogService.LogError(" DB error fetching user's gym: ", err)
 		return nil, err
 	}
 
@@ -396,7 +396,7 @@ func GetAvailableChatUsers(currentUserId int, roleId int) ([]models.AvailableCha
 		`, gymId, currentUserId)
 
 		if err != nil {
-			LogService.LogError("❌ DB error fetching members: ", err)
+			LogService.LogError(" DB error fetching members: ", err)
 			return nil, err
 		}
 
@@ -418,7 +418,7 @@ func GetAvailableChatUsers(currentUserId int, roleId int) ([]models.AvailableCha
 		`, gymId, currentUserId)
 
 		if err != nil {
-			LogService.LogError("❌ DB error fetching trainers: ", err)
+			LogService.LogError(" DB error fetching trainers: ", err)
 			return nil, err
 		}
 	} else {
@@ -439,18 +439,18 @@ func GetAvailableChatUsers(currentUserId int, roleId int) ([]models.AvailableCha
 				&user.RoleId,
 			)
 			if err != nil {
-				LogService.LogError("❌ DB scan error: ", err)
+				LogService.LogError(" DB scan error: ", err)
 				continue
 			}
 			users = append(users, user)
 		}
 
 		if err := rows.Err(); err != nil {
-			LogService.LogError("❌ DB rows error: ", err)
+			LogService.LogError(" DB rows error: ", err)
 			return nil, err
 		}
 	}
 
-	LogService.LogMessage(fmt.Sprintf("✅ Found %d available chat users for role %d", len(users), roleId))
+	LogService.LogMessage(fmt.Sprintf(" Found %d available chat users for role %d", len(users), roleId))
 	return users, nil
 }
