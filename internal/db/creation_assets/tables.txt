@@ -1,0 +1,416 @@
+------------------------> RECOVERY ----------------> 
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[attendance](
+	[attendanceId] [int] IDENTITY(1,1) NOT NULL,
+	[userId] [int] NOT NULL,
+	[punchInTime] [datetime] NOT NULL,
+	[punchOutTime] [datetime] NULL,
+	[punchInAddress] [varchar](255) NOT NULL,
+	[punchInLat] [varchar](20) NOT NULL,
+	[punchInLong] [varchar](20) NOT NULL,
+	[punchOutAddress] [varchar](255) NULL,
+	[punchOutLat] [varchar](20) NULL,
+	[punchOutLong] [varchar](20) NULL
+) ON [PRIMARY]
+GO
+ALTER TABLE [dbo].[attendance] ADD PRIMARY KEY CLUSTERED 
+(
+	[attendanceId] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, SORT_IN_TEMPDB = OFF, IGNORE_DUP_KEY = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
+GO
+
+----------------------
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[employees](
+	[employeeId] [int] IDENTITY(1,1) NOT NULL,
+	[userId] [int] NOT NULL,
+	[gymId] [int] NOT NULL,
+	[createdBy] [int] NOT NULL,
+	[startedWorking] [datetime] NOT NULL
+) ON [PRIMARY]
+GO
+ALTER TABLE [dbo].[employees] ADD PRIMARY KEY CLUSTERED 
+(
+	[employeeId] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, SORT_IN_TEMPDB = OFF, IGNORE_DUP_KEY = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
+GO
+ALTER TABLE [dbo].[employees] ADD  DEFAULT (getdate()) FOR [startedWorking]
+GO
+ALTER TABLE [dbo].[employees]  WITH CHECK ADD FOREIGN KEY([gymId])
+REFERENCES [dbo].[gym] ([gymId])
+GO
+ALTER TABLE [dbo].[employees]  WITH CHECK ADD FOREIGN KEY([userId])
+REFERENCES [dbo].[users] ([userId])
+GO
+
+-----------------------
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[feedback](
+	[feedbackId] [int] IDENTITY(1,1) NOT NULL,
+	[rating] [int] NULL,
+	[comments] [text] NULL,
+	[gymId] [int] NOT NULL,
+	[createdBy] [int] NOT NULL,
+	[createdAt] [datetime] NOT NULL
+) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+GO
+ALTER TABLE [dbo].[feedback] ADD PRIMARY KEY CLUSTERED 
+(
+	[feedbackId] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, SORT_IN_TEMPDB = OFF, IGNORE_DUP_KEY = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
+GO
+ALTER TABLE [dbo].[feedback] ADD  DEFAULT (getdate()) FOR [createdAt]
+GO
+ALTER TABLE [dbo].[feedback]  WITH CHECK ADD FOREIGN KEY([createdBy])
+REFERENCES [dbo].[users] ([userId])
+GO
+ALTER TABLE [dbo].[feedback]  WITH CHECK ADD FOREIGN KEY([gymId])
+REFERENCES [dbo].[gym] ([gymId])
+GO
+ALTER TABLE [dbo].[feedback]  WITH CHECK ADD CHECK  (([rating]>=(1) AND [rating]<=(5)))
+GO
+
+
+------------------------
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[gym](
+	[gymId] [int] IDENTITY(1,1) NOT NULL,
+	[gymName] [varchar](200) NOT NULL,
+	[state] [varchar](100) NOT NULL,
+	[city] [varchar](100) NOT NULL,
+	[gymAddress] [varchar](255) NOT NULL,
+	[contactNo] [varchar](15) NOT NULL,
+	[officialEmail] [varchar](100) NULL,
+	[createdBy] [int] NOT NULL,
+	[createdAt] [datetime] NOT NULL,
+	[updatedAt] [datetime] NULL,
+	[locationLat] [varchar](15) NULL,
+	[locationLong] [varchar](15) NULL
+) ON [PRIMARY]
+GO
+ALTER TABLE [dbo].[gym] ADD PRIMARY KEY CLUSTERED 
+(
+	[gymId] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, SORT_IN_TEMPDB = OFF, IGNORE_DUP_KEY = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
+GO
+ALTER TABLE [dbo].[gym] ADD  DEFAULT (getdate()) FOR [createdAt]
+GO
+ALTER TABLE [dbo].[gym]  WITH CHECK ADD FOREIGN KEY([createdBy])
+REFERENCES [dbo].[users] ([userId])
+GO
+
+
+----------------------
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[loginLogs](
+	[id] [int] IDENTITY(1,1) NOT NULL,
+	[userId] [int] NOT NULL,
+	[loginDate] [datetime] NOT NULL,
+	[appVersion] [varchar](20) NOT NULL,
+	[userAgent] [varchar](255) NOT NULL,
+	[locationLat] [varchar](20) NULL,
+	[locationLong] [varchar](20) NULL,
+	[ipAddress] [varchar](45) NULL
+) ON [PRIMARY]
+GO
+ALTER TABLE [dbo].[loginLogs] ADD PRIMARY KEY CLUSTERED 
+(
+	[id] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, SORT_IN_TEMPDB = OFF, IGNORE_DUP_KEY = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
+GO
+ALTER TABLE [dbo].[loginLogs] ADD  DEFAULT (getdate()) FOR [loginDate]
+GO
+
+
+-----------------------
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[messages](
+	[messageId] [int] IDENTITY(1,1) NOT NULL,
+	[messageForUserId] [int] NOT NULL,
+	[comment] [text] NOT NULL,
+	[isActive] [bit] NOT NULL,
+	[isRead] [bit] NOT NULL,
+	[createdBy] [int] NOT NULL,
+	[createdAt] [datetime] NOT NULL
+) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+GO
+ALTER TABLE [dbo].[messages] ADD PRIMARY KEY CLUSTERED 
+(
+	[messageId] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, SORT_IN_TEMPDB = OFF, IGNORE_DUP_KEY = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
+GO
+ALTER TABLE [dbo].[messages] ADD  DEFAULT ((1)) FOR [isActive]
+GO
+ALTER TABLE [dbo].[messages] ADD  DEFAULT ((0)) FOR [isRead]
+GO
+ALTER TABLE [dbo].[messages] ADD  DEFAULT (getdate()) FOR [createdAt]
+GO
+
+
+----------------------
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[notifications](
+	[notificationId] [int] IDENTITY(1,1) NOT NULL,
+	[notificationType] [int] NOT NULL,
+	[notificationTitle] [varchar](100) NOT NULL,
+	[notificationDesc] [varchar](100) NOT NULL,
+	[userId] [int] NOT NULL,
+	[createdBy] [int] NOT NULL,
+	[createdOn] [datetime] NOT NULL,
+	[isRead] [bit] NULL
+) ON [PRIMARY]
+GO
+ALTER TABLE [dbo].[notifications] ADD PRIMARY KEY CLUSTERED 
+(
+	[notificationId] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, SORT_IN_TEMPDB = OFF, IGNORE_DUP_KEY = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
+GO
+ALTER TABLE [dbo].[notifications] ADD  DEFAULT (getdate()) FOR [createdOn]
+GO
+ALTER TABLE [dbo].[notifications] ADD  DEFAULT ((0)) FOR [isRead]
+GO
+ALTER TABLE [dbo].[notifications]  WITH CHECK ADD FOREIGN KEY([createdBy])
+REFERENCES [dbo].[users] ([userId])
+GO
+ALTER TABLE [dbo].[notifications]  WITH CHECK ADD FOREIGN KEY([userId])
+REFERENCES [dbo].[users] ([userId])
+GO
+
+
+---------------------------
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[planChangesLogs](
+	[logId] [int] IDENTITY(1,1) NOT NULL,
+	[planId] [int] NULL,
+	[changedBy] [int] NULL,
+	[changeType] [varchar](50) NOT NULL,
+	[changeDetails] [text] NOT NULL,
+	[changedAt] [datetime] NULL,
+	[oldPlanBanner] [text] NULL,
+	[oldPlanName] [varchar](255) NOT NULL,
+	[oldPlanDesc] [text] NOT NULL,
+	[oldPlanPrice] [decimal](10, 2) NOT NULL,
+	[oldPlanDuration] [int] NOT NULL,
+	[oldIsActive] [bit] NOT NULL,
+	[newPlanBanner] [text] NOT NULL,
+	[newPlanName] [varchar](255) NOT NULL,
+	[newPlanDesc] [text] NOT NULL,
+	[newPlanPrice] [decimal](10, 2) NULL,
+	[newPlanDuration] [int] NOT NULL,
+	[newIsActive] [bit] NOT NULL
+) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+GO
+ALTER TABLE [dbo].[planChangesLogs] ADD PRIMARY KEY CLUSTERED 
+(
+	[logId] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, SORT_IN_TEMPDB = OFF, IGNORE_DUP_KEY = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
+GO
+ALTER TABLE [dbo].[planChangesLogs] ADD  DEFAULT (getdate()) FOR [changedAt]
+GO
+ALTER TABLE [dbo].[planChangesLogs]  WITH CHECK ADD FOREIGN KEY([changedBy])
+REFERENCES [dbo].[users] ([userId])
+GO
+
+
+------------------------
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[plans](
+	[planId] [int] IDENTITY(1,1) NOT NULL,
+	[planBanner] [text] NULL,
+	[planName] [varchar](255) NOT NULL,
+	[planDesc] [text] NOT NULL,
+	[planPrice] [decimal](10, 2) NOT NULL,
+	[planDuration] [int] NOT NULL,
+	[isActive] [bit] NULL,
+	[createdBy] [int] NULL,
+	[createdAt] [datetime] NULL,
+	[gymId] [int] NULL
+) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+GO
+ALTER TABLE [dbo].[plans] ADD PRIMARY KEY CLUSTERED 
+(
+	[planId] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, SORT_IN_TEMPDB = OFF, IGNORE_DUP_KEY = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
+GO
+ALTER TABLE [dbo].[plans] ADD  DEFAULT ((1)) FOR [isActive]
+GO
+ALTER TABLE [dbo].[plans] ADD  DEFAULT (getdate()) FOR [createdAt]
+GO
+ALTER TABLE [dbo].[plans]  WITH CHECK ADD FOREIGN KEY([createdBy])
+REFERENCES [dbo].[users] ([userId])
+GO
+ALTER TABLE [dbo].[plans]  WITH CHECK ADD FOREIGN KEY([gymId])
+REFERENCES [dbo].[gym] ([gymId])
+GO
+
+--------------------------
+
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[registrationLogs](
+	[regLogId] [int] IDENTITY(1,1) NOT NULL,
+	[userId] [int] NOT NULL,
+	[userName] [varchar](100) NOT NULL,
+	[userPass] [varchar](255) NOT NULL,
+	[gender] [char](1) NOT NULL,
+	[mobile] [varchar](15) NOT NULL,
+	[email] [varchar](100) NULL,
+	[profilePic] [text] NULL,
+	[roleId] [int] NOT NULL,
+	[appVersion] [varchar](20) NULL,
+	[userAgent] [varchar](255) NOT NULL,
+	[createdAt] [datetime] NOT NULL
+) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+GO
+ALTER TABLE [dbo].[registrationLogs] ADD PRIMARY KEY CLUSTERED 
+(
+	[userId] ASC,
+	[regLogId] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, SORT_IN_TEMPDB = OFF, IGNORE_DUP_KEY = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
+GO
+ALTER TABLE [dbo].[registrationLogs] ADD  DEFAULT (getdate()) FOR [createdAt]
+GO
+
+-------------------------
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[userMemberships](
+	[membershipId] [int] IDENTITY(1,1) NOT NULL,
+	[userId] [int] NOT NULL,
+	[planId] [int] NOT NULL,
+	[startDate] [datetime] NOT NULL,
+	[endDate] [datetime] NOT NULL,
+	[isActive] [bit] NOT NULL,
+	[membershipStatus] [char](1) NOT NULL,
+	[createdAt] [datetime] NOT NULL
+) ON [PRIMARY]
+GO
+ALTER TABLE [dbo].[userMemberships] ADD PRIMARY KEY CLUSTERED 
+(
+	[membershipId] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, SORT_IN_TEMPDB = OFF, IGNORE_DUP_KEY = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
+GO
+ALTER TABLE [dbo].[userMemberships] ADD  DEFAULT ((1)) FOR [isActive]
+GO
+ALTER TABLE [dbo].[userMemberships] ADD  DEFAULT ('P') FOR [membershipStatus]
+GO
+ALTER TABLE [dbo].[userMemberships] ADD  DEFAULT (getdate()) FOR [createdAt]
+GO
+ALTER TABLE [dbo].[userMemberships]  WITH CHECK ADD FOREIGN KEY([planId])
+REFERENCES [dbo].[plans] ([planId])
+GO
+ALTER TABLE [dbo].[userMemberships]  WITH CHECK ADD FOREIGN KEY([userId])
+REFERENCES [dbo].[users] ([userId])
+GO
+ALTER TABLE [dbo].[userMemberships]  WITH CHECK ADD CHECK  (([membershipStatus]='E' OR [membershipStatus]='R' OR [membershipStatus]='A' OR [membershipStatus]='P'))
+GO
+
+-----------------------------
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[userMembershipsChangesLogs](
+	[logId] [int] IDENTITY(1,1) NOT NULL,
+	[memberId] [int] NOT NULL,
+	[membershipId] [int] NOT NULL,
+	[changesMade] [char](1) NOT NULL,
+	[changedBy] [int] NOT NULL,
+	[loggedAt] [datetime] NOT NULL
+) ON [PRIMARY]
+GO
+ALTER TABLE [dbo].[userMembershipsChangesLogs] ADD PRIMARY KEY CLUSTERED 
+(
+	[logId] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, SORT_IN_TEMPDB = OFF, IGNORE_DUP_KEY = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
+GO
+ALTER TABLE [dbo].[userMembershipsChangesLogs] ADD  DEFAULT (getdate()) FOR [loggedAt]
+GO
+ALTER TABLE [dbo].[userMembershipsChangesLogs]  WITH CHECK ADD FOREIGN KEY([changedBy])
+REFERENCES [dbo].[users] ([userId])
+GO
+ALTER TABLE [dbo].[userMembershipsChangesLogs]  WITH CHECK ADD FOREIGN KEY([memberId])
+REFERENCES [dbo].[users] ([userId])
+GO
+ALTER TABLE [dbo].[userMembershipsChangesLogs]  WITH CHECK ADD CHECK  (([changesMade]='R' OR [changesMade]='A'))
+GO
+
+
+----------------------------
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[users](
+	[userId] [int] IDENTITY(1,1) NOT NULL,
+	[userName] [varchar](100) NOT NULL,
+	[userPass] [varchar](255) NOT NULL,
+	[gender] [char](1) NOT NULL,
+	[mobile] [varchar](15) NOT NULL,
+	[email] [varchar](100) NULL,
+	[profilePic] [text] NULL,
+	[createdAt] [datetime] NOT NULL,
+	[updatedAt] [datetime] NULL,
+	[roleId] [int] NOT NULL,
+	[authToken] [varchar](1024) NULL,
+	[isActive] [bit] NOT NULL
+) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+GO
+ALTER TABLE [dbo].[users] ADD PRIMARY KEY CLUSTERED 
+(
+	[userId] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, SORT_IN_TEMPDB = OFF, IGNORE_DUP_KEY = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
+GO
+ALTER TABLE [dbo].[users] ADD  DEFAULT (getdate()) FOR [createdAt]
+GO
+ALTER TABLE [dbo].[users] ADD  CONSTRAINT [DEFAULT_users_isActive]  DEFAULT ((1)) FOR [isActive]
+GO
+ALTER TABLE [dbo].[users]  WITH CHECK ADD CHECK  (([gender]='F' OR [gender]='M' OR [gender]='O'))
+GO
+
+
+-----------------------
